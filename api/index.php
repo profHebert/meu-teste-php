@@ -1,12 +1,15 @@
 <?php
-// Captura o que foi digitado na URL
-$url = isset($_GET['url']) ? trim($_GET['url'], '/') : '';
+// Captura a rota real digitada no navegador (ex: /fecap/ads-3a/prova1)
+$requisicao = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Limpa as barras das pontas e quebra o texto
+$url = trim($requisicao, '/');
 $partes = explode('/', $url);
 
 // Preenche as variáveis baseado nas posições da URL
-$instituicao = $partes[0] ?? 'Nenhuma';
-$turma       = $partes[1] ?? 'Nenhuma';
-$prova       = $partes[2] ?? 'Nenhuma';
+$instituicao = (!empty($partes[0])) ? $partes[0] : 'Nenhuma';
+$turma       = (!empty($partes[1])) ? $partes[1] : 'Nenhuma';
+$prova       = (!empty($partes[2])) ? $partes[2] : 'Nenhuma';
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
