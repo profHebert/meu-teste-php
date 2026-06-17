@@ -1,6 +1,7 @@
 <?php
-// 0. DESVIO DE ROTA: SE FOR O DASHBOARD, CARREGA O ARQUIVO CORRETO E PARA A EXECUÇÃO
+// 0. DESVIO DE ROTA: CARREGA A CONEXÃO E O DASHBOARD IMEDIATAMENTE
 if (strpos($_SERVER['REQUEST_URI'], 'dashboard.php') !== false) {
+    require_once "conexao.php"; // <--- ADICIONAR ESTA LINHA AQUI
     include_once "dashboard.php";
     exit;
 }
