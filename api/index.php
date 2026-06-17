@@ -1,5 +1,9 @@
 <?php
-// 0. DESVIO DE ROTA: CARREGA A CONEXÃO E O DASHBOARD IMEDIATAMENTE
+// =========================================================================
+// api/index.php - CONTROLADOR CENTRAL DA AVALIAÇÃO (VERSÃO POST DEFINITIVO)
+// =========================================================================
+
+// 0. DESVIO DE ROTA: SE FOR O DASHBOARD, CARREGA IMEDIATAMENTE
 if (strpos($_SERVER['REQUEST_URI'], 'dashboard.php') !== false) {
     require_once "conexao.php";
     include_once "dashboard.php";
@@ -7,299 +11,242 @@ if (strpos($_SERVER['REQUEST_URI'], 'dashboard.php') !== false) {
 }
 
 require_once "conexao.php";
-require_once "gravar_historico.php"; // <--- ADICIONE ESTA LINHA AQUI
+require_once "gravar_historico.php";
 
-// 1. CAPTURA DA URL COMPATÍVEL COM REQUISIÇÕES GET E POST NA VERCEL
-$url_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$url_limpa = trim($url_path, '/');
-$partes = array_values(array_filter(explode('/', $url_limpa)));
+session_start();
 
-// Define a instituição e o código de prova garantindo que NUNCA fiquem nulos
-$instituicao  = 'portal';
-$codigo_prova = 'GERAL_atv1';
+// 1. CAPTURA DOS PARÂMETROS DA URL
+$request_uri = $_SERVER['REQUEST_URI'];
+$base_path = '/uninove/';
+$pos = strpos($request_uri, $base_path);
 
-if (isset($partes[0]) && !empty($partes[0])) {
-    $instituicao = strtolower($partes[0]);
-}
-if (isset($partes[1]) && !empty($partes[1])) {
-    $codigo_prova = $partes[1];
-}
-
-// Extrai a sigla da disciplina (Ex: DBDSQL_6a_M_atv1 -> DBDSQL)
-$partes_codigo = explode('_', $codigo_prova);
-$disciplina_url = (isset($partes_codigo[0]) && !empty($partes_codigo[0])) ? strtoupper($partes_codigo[0]) : 'DBDSQL';
-
-// 2. CONFIGURAÇÃO DE IDENTIDADE VISUAL
-switch ($instituicao) {
-    case 'fecap':
-        $nome_faculdade = "FECAP"; $cor_fundo = "#004d3d"; $cor_botao = "#deff9a"; $cor_texto_btn = "#004d3d"; break;
-    case 'uninove':
-        $nome_faculdade = "UNINOVE"; $cor_fundo = "#002d62"; $cor_botao = "#fbb034"; $cor_texto_btn = "#ffffff"; break;
-    default:
-        $nome_faculdade = "Portal de Provas"; $cor_fundo = "#1a1a1a"; $cor_botao = "#0070f3"; $cor_texto_btn = "#ffffff"; break;
+if ($pos !== false) {
+    $param_str = substr($request_uri, $pos + strlen($base_path));
+    $parts = explode('/', $param_str);
+    $codigo_prova = clean_input($parts[0] ?? '');
+} else {
+    $codigo_prova = clean_input($_GET['prova'] ?? '');
 }
 
-// 3. BLINDAGEM DAS VARIÁVEIS DE CONTROLE DO FORMULÁRIO
-$aluno_nome  = isset($_POST['nome']) ? $_POST['nome'] : '';
-$aluno_ra    = isset($_POST['ra']) ? $_POST['ra'] : '';
-$aluno_email = isset($_POST['email']) ? $_POST['email'] : '';
-$acao        = isset($_POST['acao']) ? $_POST['acao'] : '';
+if (empty($codigo_prova)) {
+    die("<h3>Erro: Código da prova não fornecido na URL. Exemplo correto: /uninove/DBDSQL_6a_M_atv1</h3>");
+}
 
-$tela = 'identificacao'; 
-$questoes_prova = [];
-$erro = '';
+// Quebra o código da prova para identificar a disciplina (ex: DBDSQL)
+$prova_parts = explode('_', $codigo_prova);
+$disciplina_sigla = $prova_parts[0] ?? '';
 
-// 4. PROCESSAMENTO DAS AÇÕES (POST)
+// 2. CONTROLE DE TELAS (FLUXO DO ALUNO)
+$tela = 'identificacao';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    // AÇÃO 1: ALUNO DIGITOU OS DADOS E CLICOU EM INICIAR
-    if ($acao === 'iniciar') {
-        $endpoint_checa = "historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
-        $historico = consultarSupabase($endpoint_checa);
-        
-        // Verifica se o histórico retornou dados válidos
-        if (is_array($historico) && !empty($historico) && isset($historico[0])) {
-            $registro = $historico[0];
-            
-            if (isset($registro['status']) && $registro['status'] === 'concluida') {
-                $tela = 'resultado_ja_feito';
-                $nota_final = isset($registro['nota_final']) ? $registro['nota_final'] : 0;
-            } else {
-                // ANTI-FRAUDE: Aluno deu F5. Recupera as mesmas questões
-                $tela = 'prova';
-                $dados_salvos = (isset($registro['respostas_aluno']) && is_string($registro['respostas_aluno'])) ? json_decode($registro['respostas_aluno'], true) : ($registro['respostas_aluno'] ?? []);
-                $ids_sorteados = $dados_salvos['questoes_sorteadas'] ?? [];
-                
-                if (!empty($ids_sorteados)) {
-                    $ids_string = implode(',', $ids_sorteados);
-                    $resultado_busca = consultarSupabase("questoes?id=in.(" . $ids_string . ")");
-                    $questoes_prova = is_array($resultado_busca) ? $resultado_busca : [];
-                }
-            }
-        } else {
-            // Primeira vez acessando. Define filtros de aulas baseados na sigla da atividade
-            $aulas_filtro = "in.(1,2,3,4,5,6,7)"; // Expandido para abranger mais aulas do seu banco
-            if (strpos($codigo_prova, 'atv2') !== false) $aulas_filtro = "in.(5,6,7,8)";
-            
-            $endpoint_questoes = "questoes?disciplina=eq." . $disciplina_url . "&numero_aula=" . $aulas_filtro . "&ativa=eq.true";
-            $universo_questoes = consultarSupabase($endpoint_questoes);
-            
-            if (is_array($universo_questoes) && !empty($universo_questoes)) {
-                shuffle($universo_questoes);
-                $limite = min(5, count($universo_questoes));
-                $questoes_prova = array_slice($universo_questoes, 0, $limite);
-                
-                $ids_sorteados = array_column($questoes_prova, 'id');
-                
-                
-                // Registra o início da prova no Supabase como 'em_andamento'
-                $dados_insert = [
-                    "aluno_nome" => $aluno_nome,
-                    "aluno_ra" => $aluno_ra,
-                    "aluno_email" => $aluno_email,
-                    "instituicao" => $instituicao,
-                    "turma" => $codigo_prova,        // <-- Força o código da URL (ex: DBDSQL_6a_M_atv1)
-                    "codigo_prova" => $codigo_prova, // <-- Garante a mesma coisa aqui
-                    "numero_aula" => 1,              // Mudado de 0 para 1 para não sumir nos filtros
-                    "nota_final" => 0.00,
-                    "status" => "em_andamento",
-                    "respostas_aluno" => json_encode(["questoes_sorteadas" => $ids_sorteados])
-                ];
-                
-                $ch = curl_init($GLOBALS['supabase_url'] . "/rest/v1/historico_provas");
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dados_insert));
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    "apikey: " . $GLOBALS['supabase_key'],
-                    "Authorization: Bearer " . $GLOBALS['supabase_key'],
-                    "Content-Type: application/json"
-                ]);
-                curl_exec($ch);
-                curl_close($ch);
-                
-                $tela = 'prova';
-            } else {
-                $erro = "Nenhuma questão encontrada para a disciplina " . $disciplina_url . " com os filtros aplicados.";
-                $tela = 'identificacao';
-            }
+    // AÇÃO: O ALUNO PREENCHEU OS DADOS E CLICOU EM "INICIAR"
+    if (isset($_POST['acao']) && $_POST['acao'] === 'iniciar_prova') {
+        $aluno_nome  = clean_input($_POST['aluno_nome'] ?? '');
+        $aluno_ra    = clean_input($_POST['aluno_ra'] ?? '');
+        $aluno_email = clean_input($_POST['aluno_email'] ?? '');
+        $instituicao = clean_input($_POST['instituicao'] ?? 'UNINOVE');
+
+        if (empty($aluno_nome) || empty($aluno_ra)) {
+            die("<h3>Erro: Nome e RA são obrigatórios para iniciar a avaliação.</h3>");
         }
+
+        // Salva os dados do aluno temporariamente na Sessão PHP (Não grava no banco ainda)
+        $_SESSION['aluno_nome']  = $aluno_nome;
+        $_SESSION['aluno_ra']    = $aluno_ra;
+        $_SESSION['aluno_email'] = $aluno_email;
+        $_SESSION['instituicao'] = $instituicao;
+
+        // Busca o universo de questões da disciplina no Supabase
+        $url_questoes = $GLOBALS['supabase_url'] . "/rest/v1/questoes?disciplina=eq." . urlencode($disciplina_sigla) . "&ativa=eq.true";
+        $universo_questoes = consultarSupabase($url_questoes);
+
+        if (!is_array($universo_questoes) || empty($universo_questoes)) {
+            die("<h3>Erro: Nenhuma questão ativa foi encontrada para a disciplina '$disciplina_sigla' no banco de dados.</h3>");
+        }
+
+        // Sorteia e limita dinamicamente a 5 questões para testes ágeis
+        shuffle($universo_questoes);
+        $limite = min(5, count($universo_questoes));
+        $questoes_prova = array_slice($universo_questoes, 0, $limite);
+
+        // Guarda as questões sorteadas na sessão do aluno
+        $_SESSION['questoes_prova'] = $questoes_prova;
+        
+        $tela = 'prova';
     }
     
-    // AÇÃO 2: ALUNO MARCOU AS RESPOSTAS E CLICOU EM FINALIZAR
-    if ($acao === 'finalizar') {
-        $ids_enviados = $_POST['questoes_ids'] ?? [];
-        $respostas_aluno = $_POST['respostas'] ?? [];
-        
-        $total_questoes = count($ids_enviados);
-        $acertos = 0;
-        
-        if ($total_questoes > 0) {
-            $ids_string = implode(',', $ids_enviados);
-            $questoes_originais = consultarSupabase("questoes?id=in.(" . $ids_string . ")");
-            
-            $questoes_focadas = [];
-            if (is_array($questoes_originais)) {
-                foreach ($questoes_originais as $qo) {
-                    $questoes_focadas[$qo['id']] = $qo;
-                }
-            }
-            
-            foreach ($ids_enviados as $qid) {
-                if (isset($questoes_focadas[$qid])) {
-                    $resposta_dada = isset($respostas_aluno[$qid]) ? intval($respostas_aluno[$qid]) : -1;
-                    $resposta_certa = intval($questoes_focadas[$qid]['resposta_correta']);
-                    
-                    if ($resposta_dada === $resposta_certa) {
-                        $acertos++;
-                    }
-                }
-            }
-            
-            $nota_final = ($acertos / $total_questoes) * 10;
-            
-            // $dados_update = [
-            //     "nota_final" => $nota_final,
-            //     "status" => "concluida",
-            //     "respostas_aluno" => json_encode([
-            //         "questoes_sorteadas" => $ids_enviados,
-            //         "escolhas_aluno" => $respostas_aluno
-            //     ])
-            // ];
+    // AÇÃO: O ALUNO RESPONDEU E CLICOU EM "FINALIZAR E ENVIAR"
+    elseif (isset($_POST['acao']) && $_POST['acao'] === 'finalizar_prova') {
+        $aluno_nome  = $_SESSION['aluno_nome'] ?? 'Aluno Anonimo';
+        $aluno_ra    = $_SESSION['aluno_ra'] ?? '0000';
+        $aluno_email = $_SESSION['aluno_email'] ?? '';
+        $instituicao = $_SESSION['instituicao'] ?? 'UNINOVE';
+        $questoes_prova = $_SESSION['questoes_prova'] ?? [];
 
-            $dados_update = [
-                "nota_final" => floatval($nota_final),
-                "status" => "finalizada"
-            ];
-
-            // Dispara a atualização isolada passando o RA
-            $retorno_update = salvarNoHistorico($dados_update, "PATCH", $aluno_ra);
-
-            // Se o Supabase recusar a atualização da nota, avisa na tela
-            if ($retorno_update['codigo'] >= 400) {
-                die("Erro ao FINALIZAR histórico (HTTP " . $retorno_update['codigo'] . "): " . print_r($retorno_update['resposta'], true));
-            }
-
-            $tela = 'resultado_final';
-            
-            //$url_update = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
-            
-            // Filtra puramente pelo RA do aluno que iniciou a sessão para aplicar a nota
-            $url_update = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?aluno_ra=eq." . urlencode($aluno_ra);
-            $ch = curl_init($url_update);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PATCH");
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($dados_update));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                "apikey: " . $GLOBALS['supabase_key'],
-                "Authorization: Bearer " . $GLOBALS['supabase_key'],
-                "Content-Type: application/json"
-            ]);
-            curl_exec($ch);
-            curl_close($ch);
-            
-            $tela = 'resultado_final';
+        if (empty($questoes_prova)) {
+            die("<h3>Erro de Sessão: Sessão expirada ou questões não encontradas. Abra o link novamente.</h3>");
         }
+
+        // Processa as respostas e calcula a nota
+        $respostas_enviadas = $_POST['respostas'] ?? [];
+        $total_questoes = count($questoes_prova);
+        $acertos = 0;
+
+        foreach ($questoes_prova as $questao) {
+            $id_q = $questao['id'];
+            $resposta_correta = intval($questao['resposta_correta']);
+            $resposta_aluno = isset($respostas_enviadas[$id_q]) ? intval($respostas_enviadas[$id_q]) : -1;
+
+            if ($resposta_aluno === $resposta_correta) {
+                $acertos++;
+            }
+        }
+
+        // Cálculo da Nota de 0.00 a 10.00
+        $nota_final = $total_questoes > 0 ? (($acertos / $total_questoes) * 10) : 0;
+        $_SESSION['nota_final'] = number_format($nota_final, 2, ',', '.');
+
+        // MONTA O REGISTRO COMPLETO PARA GRAVAÇÃO DEFINITIVA (MÉTODO POST)
+        $dados_completos = [
+            "aluno_nome"      => $aluno_nome,
+            "aluno_ra"        => $aluno_ra,
+            "aluno_email"     => $aluno_email,
+            "instituicao"     => $instituicao,
+            "turma"           => $codigo_prova,
+            "codigo_prova"    => $codigo_prova,
+            "numero_aula"     => 1,
+            "nota_final"      => floatval($nota_final),
+            "status"          => "finalizada",
+            "respostas_aluno" => json_encode($respostas_enviadas)
+        ];
+
+        // Dispara a inserção única e definitiva no Supabase
+        $retorno_post = salvarNoHistorico($dados_completos, "POST");
+
+        // Se o Supabase recusar a criação por inconsistência de colunas, estoura o erro na tela
+        if ($retorno_post['codigo'] >= 400) {
+            die("Erro fatal ao salvar no banco (HTTP " . $retorno_post['codigo'] . "): " . print_r($retorno_post['resposta'], true));
+        }
+
+        // Limpa a sessão para evitar reenvios acidentais
+        session_destroy();
+        
+        $tela = 'resultado_final';
     }
+}
+
+// 3. LIMPEZA DE INPUTS CONTRA SQL INJECTION / XSS
+function clean_input($data) {
+    $data = trim($data);
+    $data = stripslashes($data);
+    $data = htmlspecialchars($data, ENT_QUOTES, 'UTF-8');
+    return $data;
 }
 ?>
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title><?php echo $nome_faculdade; ?> - Avaliação</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaliação Online - UNINOVE</title>
     <style>
-        body { background-color: <?php echo $cor_fundo; ?>; color: #ffffff; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        .card-sistema { background: rgba(255, 255, 255, 0.1); padding: 30px; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); width: 100%; max-width: 600px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); }
-        .input-grupo input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid rgba(255,255,255,0.3); background: rgba(0,0,0,0.4); color: #fff; box-sizing: border-box; }
-        .btn-acao { background-color: <?php echo $cor_botao; ?>; color: <?php echo $cor_texto_btn; ?>; border: none; padding: 14px; width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 20px; font-size: 16px; }
-        .questao-bloco { background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: left; border: 1px solid rgba(255,255,255,0.05); }
-        .opcao-item { display: block; margin: 10px 0; cursor: pointer; padding: 8px; border-radius: 4px; background: rgba(255,255,255,0.02); }
-        .opcao-item:hover { background: rgba(255,255,255,0.1); }
-        .erro { background: #ff4a4a; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 14px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0d2347; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background-color: #1a365d; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); width: 100%; max-width: 650px; border: 1px solid #2b4c7e; }
+        h2 { margin-top: 0; color: #fff; border-bottom: 2px solid #2b4c7e; padding-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .sub { font-size: 14px; color: #a0aec0; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #cbd5e0; }
+        input[type="text"], input[type="email"] { width: 100%; padding: 12px; border: 1px solid #2b4c7e; background-color: #0d2347; border-radius: 6px; color: #fff; box-sizing: border-box; font-size: 16px; }
+        input:focus { border-color: #4299e1; outline: none; }
+        .questao-box { background-color: #0d2347; padding: 20px; border-radius: 8px; margin-bottom: 25px; border-left: 5px solid #3182ce; }
+        .opcao-item { display: flex; align-items: center; margin: 12px 0; padding: 10px; background-color: #1a365d; border: 1px solid #2b4c7e; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .opcao-item:hover { background-color: #2b4c7e; }
+        .opcao-item input { margin-right: 15px; transform: scale(1.2); }
+        .btn { background-color: #3182ce; color: white; padding: 14px 28px; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; transition: background 0.2s; text-transform: uppercase; }
+        .btn:hover { background-color: #2b6cb0; }
+        .btn-success { background-color: #38a169; }
+        .btn-success:hover { background-color: #2f855a; }
+        .alerta-nota { background-color: #2b4c7e; border-radius: 8px; padding: 20px; text-align: center; margin-top: 20px; }
+        .nota-num { font-size: 36px; font-weight: bold; color: #48bb78; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="card-sistema">
-        <h2><?php echo $nome_faculdade; ?></h2>
-        <p style="font-size:13px; opacity:0.7;">Prova Ativa: <?php echo htmlspecialchars($codigo_prova); ?></p>
+<div class="container">
+    
+    <?php if ($tela === 'identificacao'): ?>
+        <h2>UNINOVE</h2>
+        <div class="sub">Prova Ativa: <?php echo htmlspecialchars($codigo_prova); ?></div>
         
-        <?php if ($erro): ?><div class="erro"><?php echo $erro; ?></div><?php endif; ?>
-
-        <?php if ($tela === 'identificacao'): ?>
-            <h3>Identificação do Estudante</h3>
-            <form action="" method="POST">
-                <input type="hidden" name="acao" value="iniciar">
-                <div class="input-grupo"><input type="text" name="nome" placeholder="Nome Completo" required></div>
-                <div class="input-grupo"><input type="text" name="ra" placeholder="RA" required></div>
-                <div class="input-grupo"><input type="email" name="email" placeholder="E-mail Institucional" required></div>
-                <button type="submit" class="btn-acao">Iniciar Avaliação</button>
-            </form>
-
-        <?php elseif ($tela === 'prova'): ?>
-            <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; margin-bottom: 20px; text-align: left; font-size: 14px;">
-                🧑‍🎓 Aluno: <b><?php echo htmlspecialchars($aluno_nome); ?></b> | RA: <b><?php echo htmlspecialchars($aluno_ra); ?></b>
+        <form method="POST">
+            <input type="hidden" name="acao" value="iniciar_prova">
+            
+            <div class="form-group">
+                <label for="aluno_nome">Nome Completo:</label>
+                <input type="text" id="aluno_nome" name="aluno_nome" placeholder="Digite seu nome completo" required>
             </div>
-
-            <form action="" method="POST">
-                <input type="hidden" name="acao" value="finalizar">
-                <input type="hidden" name="nome" value="<?php echo htmlspecialchars($aluno_nome); ?>">
-                <input type="hidden" name="ra" value="<?php echo htmlspecialchars($aluno_ra); ?>">
-                <input type="hidden" name="email" value="<?php echo htmlspecialchars($aluno_email); ?>">
-
-                <?php if (!empty($questoes_prova)): ?>
-                    <?php foreach ($questoes_prova as $index => $q): ?>
-                        <input type="hidden" name="questoes_ids[]" value="<?php echo $q['id']; ?>">
-                        <div class="questao-bloco">
-                            <p><strong>Questão <?php echo $index + 1; ?>:</strong></p>
-                            <p><?php echo htmlspecialchars($q['enunciado']); ?></p>
-                            
-                            <?php 
-                            $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
-                            if (is_array($opcoes)): 
-                                $opcoes_mapeadas = [];
-                                foreach ($opcoes as $i => $texto) {
-                                    $opcoes_mapeadas[] = ['id_original' => $i, 'texto' => $texto];
-                                }
-                                shuffle($opcoes_mapeadas); 
-                                
-                                foreach ($opcoes_mapeadas as $opt): 
-                            ?>
-                                <label class="opcao-item">
-                                    <input type="radio" name="respostas[<?php echo $q['id']; ?>]" value="<?php echo $opt['id_original']; ?>" required>
-                                    <?php echo htmlspecialchars($opt['texto']); ?>
-                                </label>
-                            <?php 
-                                endforeach;
-                            endif; 
-                            ?>
-                        </div>
-                    <?php endforeach; ?>
-                    <button type="submit" class="btn-acao">Finalizar e Enviar Prova</button>
-                <?php else: ?>
-                    <p>Nenhuma questão foi carregada. Verifique os filtros de disciplina e aulas.</p>
-                <?php endif; ?>
-            </form>
-
-        <?php elseif ($tela === 'resultado_final'): ?>
-            <h3>Avaliação Concluída!</h3>
-            <p>Sua prova foi processada e as respostas foram salvas com sucesso no banco de dados.</p>
-            <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 8px; font-size: 20px; margin: 20px 0;">
-                Sua Nota Final: <b style="color: #deff9a;"><?php echo number_format($nota_final, 2, ',', '.'); ?></b>
+            
+            <div class="form-group">
+                <label for="aluno_ra">Registro Acadêmico (RA):</label>
+                <input type="text" id="aluno_ra" name="aluno_ra" placeholder="Digite seu RA" required>
             </div>
-            <p style="font-size:12px; opacity:0.6;">O gabarito detalhado será liberado pelo professor posteriormente.</p>
-
-        <?php elseif ($tela === 'resultado_ja_feito'): ?>
-            <h3>Acesso Negado</h3>
-            <p>Identificamos que o RA <b><?php echo htmlspecialchars($aluno_ra); ?></b> já concluiu esta avaliação anteriormente.</p>
-            <div style="background: rgba(255,0,0,0.2); padding: 15px; border-radius: 6px; margin: 20px 0;">
-                Nota Registrada: <b><?php echo number_format($nota_final, 2, ',', '.'); ?></b>
+            
+            <div class="form-group">
+                <label for="aluno_email">E-mail (Opcional):</label>
+                <input type="email" id="aluno_email" name="aluno_email" placeholder="seu.email@uninove.edu.br">
             </div>
-            <p style="font-size:13px;">Não é permitido refazer a prova ou submeter novas respostas.</p>
-        <?php endif; ?> 
+            
+            <button type="submit" class="btn">Iniciar Avaliação</button>
+        </form>
 
-    </div>
+    <?php elseif ($tela === 'prova'): ?>
+        <h2>AVALIAÇÃO EM ANDAMENTO</h2>
+        <div class="sub">Aluno: <?php echo htmlspecialchars($_SESSION['aluno_nome']); ?> | RA: <?php echo htmlspecialchars($_SESSION['aluno_ra']); ?></div>
+        
+        <form method="POST">
+            <input type="hidden" name="acao" value="finalizar_prova">
+            
+            <?php foreach ($_SESSION['questoes_prova'] as $index => $q): ?>
+                <div class="questao-box">
+                    <p><strong>Questão <?php echo ($index + 1); ?>:</strong> <?php echo htmlspecialchars($q['enunciated'] ?? $q['enunciado']); ?></p>
+                    
+                    <?php 
+                    $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
+                    if (is_array($opcoes)):
+                        foreach ($opcoes as $idx_opcao => $opcao): 
+                    ?>
+                        <label class="opcao-item">
+                            <input type="radio" name="respostas[<?php echo $q['id']; ?>]" value="<?php echo $idx_opcao; ?>" required>
+                            <?php echo htmlspecialchars($opcao); ?>
+                        </label>
+                    <?php 
+                        endforeach;
+                    endif; 
+                    ?>
+                </div>
+            <?php endforeach; ?>
+            
+            <button type="submit" class="btn btn-success" onclick="return confirm('Deseja realmente finalizar e enviar suas respostas?');">Finalizar e Enviar Prova</button>
+        </form>
+
+    <?php elseif ($tela === 'resultado_final'): ?>
+        <h2>UNINOVE</h2>
+        <div class="sub">Prova Ativa: <?php echo htmlspecialchars($codigo_prova); ?></div>
+        
+        <h3>Avaliação Concluída!</h3>
+        <p>Sua prova foi processada e as respostas foram salvas com sucesso no banco de dados.</p>
+        
+        <div class="alerta-nota">
+            <div style="font-size: 18px;">Sua Nota Final:</div>
+            <div class="nota-num"><?php echo $_SESSION['nota_final'] ?? '0,00'; ?></div>
+        </div>
+        
+        <p style="margin-top: 30px; font-size: 13px; color: #a0aec0; text-align: center;">O gabarito detalhado será liberado pelo professor posteriormente.</p>
+    <?php endif; ?>
+
+</div>
 
 </body>
 </html>
