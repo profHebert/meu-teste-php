@@ -269,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Nota Registrada: <b><?php echo number_format($nota_final, 2, ',', '.'); ?></b>
             </div>
             <p style="font-size:13px;">Não é permitido refazer a prova ou submeter novas respostas.</p>
-        <?php endif; ?>
+        <?php endif; ?> 
 
     </div>
 
