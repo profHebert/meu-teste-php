@@ -17,22 +17,30 @@ if (!empty($filtro_prova)) {
 $resultados = consultarSupabase($endpoint);
 $resultados = is_array($resultados) ? $resultados : [];
 
-// 3. CALCULA ESTATÍSTICAS RÁPIDAS
-$total_provas = count($resultados);
+// 3. CALCULA ESTATÍSTICAS RÁPIDAS (APENAS SE FOR UM ARRAY DE REGISTROS VÁLIDO)
+$total_provas = 0;
 $soma_notas = 0;
 $provas_por_turma = [];
 
-// Loop rápido para processar médias e descobrir quais turmas existem no banco
-foreach ($resultados as $res) {
-    $soma_notas += floatval($res['nota_final']);
-    
-    // Agrupa os códigos de prova para montar o menu de filtro dinâmico
-    $cod = $res['codigo_prova'] ?? 'Geral';
-    if (!in_array($cod, $provas_por_turma)) {
-        $provas_por_turma[] = $cod;
+if (is_array($resultados) && !empty($resultados) && isset($resultados[0]) && is_array($resultados[0])) {
+    $total_provas = count($resultados);
+    foreach ($resultados as $res) {
+        if (is_array($res)) {
+            $soma_notas += floatval($res['nota_final'] ?? 0);
+            
+            $cod = $res['codigo_prova'] ?? $res['turma'] ?? 'Geral';
+            if (!in_array($cod, $provas_por_turma)) {
+                $provas_por_turma[] = $cod;
+            }
+        }
     }
+} else {
+    // Se o banco retornou um erro em texto, esvaziamos os resultados para não quebrar a tabela abaixo
+    $resultados = [];
 }
+
 $media_geral = $total_provas > 0 ? ($soma_notas / $total_provas) : 0;
+
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
