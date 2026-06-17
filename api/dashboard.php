@@ -137,6 +137,7 @@ $media_geral = $total_provas > 0 ? ($soma_notas / $total_provas) : 0;
                             <th>Código da Prova</th>
                             <th>Status</th>
                             <th>Nota Final</th>
+                            <th>AÇÃO</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -154,6 +155,11 @@ $media_geral = $total_provas > 0 ? ($soma_notas / $total_provas) : 0;
                                 <td class="nota-destaque <?php echo $classe_nota; ?>">
                                     <?php echo number_format($nota, 2, ',', '.'); ?>
                                 </td>
+                                <td>
+            <a href="ver_prova.php?id=<?php echo $linha['id']; ?>" style="background-color: #3182ce; color: #fff; padding: 4px 10px; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: bold;">
+                Ver Detalhes
+            </a>
+        </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
