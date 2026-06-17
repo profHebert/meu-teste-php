@@ -26,18 +26,24 @@ switch ($instituicao) {
         $nome_faculdade = "Portal de Provas"; $cor_fundo = "#1a1a1a"; $cor_botao = "#0070f3"; $cor_texto_btn = "#ffffff"; break;
 }
 
-// 3. CONTROLE DE FLUXO DE TELAS
+// 3. BLINDAGEM DAS VARIÁVEIS DE CONTROLE DO FORMULÁRIO
+$aluno_nome  = isset($_POST['nome']) ? $_POST['nome'] : '';
+$aluno_ra    = isset($_POST['ra']) ? $_POST['ra'] : '';
+$aluno_email = isset($_POST['email']) ? $_POST['email'] : '';
+$acao        = isset($_POST['acao']) ? $_POST['acao'] : '';
+
 $tela = 'identificacao'; 
 $questoes_prova = [];
 $erro = '';
 
+// 4. PROCESSAMENTO DAS AÇÕES (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     //---------------------------------------------------------
     // AÇÃO 1: ALUNO DIGITOU OS DADOS E CLICOU EM INICIAR
     //---------------------------------------------------------
     if ($acao === 'iniciar') {
-        // Passo A: Verificar se este RA já tem uma prova iniciada ou concluída para este código de prova
+        // Verificar se este RA já tem uma prova iniciada ou concluída para este código de prova
         $endpoint_checa = "historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
         $historico = consultarSupabase($endpoint_checa);
         
@@ -54,14 +60,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $ids_sorteados = $dados_salvos['questoes_sorteadas'] ?? [];
                 
                 if (!empty($ids_sorteados)) {
-                    // Busca exatamente os IDs que tinham sido sorteados
                     $ids_string = implode(',', $ids_sorteados);
                     $questoes_prova = consultarSupabase("questoes?id=in.(" . $ids_string . ")");
                 }
             }
         } else {
-            // Passo B: Primeira vez acessando. Vamos criar as regras de filtro baseadas na atividade
-            // Exemplo: se for atv1, filtra aulas de 1 a 4 (ou 5 se for o caso do seu banco atual)
+            // Primeira vez acessando. Filtra dinamicamente as aulas permitidas
             $aulas_filtro = "in.(1,2,3,4,5)"; 
             if (strpos($codigo_prova, 'atv2') !== false) $aulas_filtro = "in.(5,6,7,8)";
             
@@ -70,7 +74,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $universo_questoes = consultarSupabase($endpoint_questoes);
             
             if (is_array($universo_questoes) && !empty($universo_questoes)) {
-                // Sorteia e limita a quantidade (ex: pegar até 20 questões, ou o total disponível)
                 shuffle($universo_questoes);
                 $limite = min(20, count($universo_questoes));
                 $questoes_prova = array_slice($universo_questoes, 0, $limite);
@@ -86,13 +89,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     "instituicao" => $instituicao,
                     "turma" => $codigo_prova,
                     "codigo_prova" => $codigo_prova,
-                    "numero_aula" => 0, // Controlado pelo escopo global da prova
+                    "numero_aula" => 0,
                     "nota_final" => 0.00,
                     "status" => "em_andamento",
                     "respostas_aluno" => json_encode(["questoes_sorteadas" => $ids_sorteados])
                 ];
                 
-                // Envia comando INSERT para o Supabase
                 $ch = curl_init($GLOBALS['supabase_url'] . "/rest/v1/historico_provas");
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_POST, true);
@@ -127,13 +129,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $ids_string = implode(',', $ids_enviados);
             $questoes_originais = consultarSupabase("questoes?id=in.(" . $ids_string . ")");
             
-            // Indexa as questões originais pelo ID para conferência rápida
             $questoes_focadas = [];
             foreach ($questoes_originais as $qo) {
                 $questoes_focadas[$qo['id']] = $qo;
             }
             
-            // Correção da prova
             foreach ($ids_enviados as $qid) {
                 $resposta_dada = isset($respostas_aluno[$qid]) ? intval($respostas_aluno[$qid]) : -1;
                 $resposta_certa = intval($questoes_focadas[$qid]['resposta_correta']);
@@ -143,10 +143,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             
-            // Calcula nota de 0 a 10
             $nota_final = ($acertos / $total_questoes) * 10;
             
-            // Atualiza o registro no Supabase para 'concluida' e grava a nota real
             $dados_update = [
                 "nota_final" => $nota_final,
                 "status" => "concluida",
@@ -156,7 +154,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ])
             ];
             
-            // Requisição PATCH para atualizar a linha do aluno pelo RA e Prova
             $url_update = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
             $ch = curl_init($url_update);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -233,7 +230,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             foreach ($opcoes as $i => $texto) {
                                 $opcoes_mapeadas[] = ['id_original' => $i, 'texto' => $texto];
                             }
-                            shuffle($opcoes_mapeadas); // Embaralha as alternativas para este aluno
+                            shuffle($opcoes_mapeadas); 
                             
                             foreach ($opcoes_mapeadas as $opt): 
                         ?>
