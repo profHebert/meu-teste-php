@@ -49,26 +49,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $endpoint_checa = "historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
         $historico = consultarSupabase($endpoint_checa);
         
-        if (is_array($historico) && !empty($historico)) {
+        // Verifica se o histórico retornou dados válidos
+        if (is_array($historico) && !empty($historico) && isset($historico[0])) {
             $registro = $historico[0];
             
-            if ($registro['status'] === 'concluida') {
+            if (isset($registro['status']) && $registro['status'] === 'concluida') {
                 $tela = 'resultado_ja_feito';
-                $nota_final = $registro['nota_final'];
+                $nota_final = isset($registro['nota_final']) ? $registro['nota_final'] : 0;
             } else {
                 // ANTI-FRAUDE: Aluno deu F5. Recupera as mesmas questões
                 $tela = 'prova';
-                $dados_salvos = is_string($registro['respostas_aluno']) ? json_decode($registro['respostas_aluno'], true) : $registro['respostas_aluno'];
+                $dados_salvos = (isset($registro['respostas_aluno']) && is_string($registro['respostas_aluno'])) ? json_decode($registro['respostas_aluno'], true) : ($registro['respostas_aluno'] ?? []);
                 $ids_sorteados = $dados_salvos['questoes_sorteadas'] ?? [];
                 
                 if (!empty($ids_sorteados)) {
                     $ids_string = implode(',', $ids_sorteados);
-                    $questoes_prova = consultarSupabase("questoes?id=in.(" . $ids_string . ")");
+                    $resultado_busca = consultarSupabase("questoes?id=in.(" . $ids_string . ")");
+                    $questoes_prova = is_array($resultado_busca) ? $resultado_busca : [];
                 }
             }
         } else {
-            // Define filtros de aulas baseados na sigla da atividade
-            $aulas_filtro = "in.(1,2,3,4,5)"; 
+            // Primeira vez acessando. Define filtros de aulas baseados na sigla da atividade
+            $aulas_filtro = "in.(1,2,3,4,5,6,7)"; // Expandido para abranger mais aulas do seu banco
             if (strpos($codigo_prova, 'atv2') !== false) $aulas_filtro = "in.(5,6,7,8)";
             
             $endpoint_questoes = "questoes?disciplina=eq." . $disciplina_url . "&numero_aula=" . $aulas_filtro . "&ativa=eq.true";
@@ -108,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $tela = 'prova';
             } else {
-                $erro = "Nenhuma questão cadastrada para a disciplina " . $disciplina_url . " nestas aulas.";
+                $erro = "Nenhuma questão encontrada para a disciplina " . $disciplina_url . " com os filtros aplicados.";
                 $tela = 'identificacao';
             }
         }
@@ -127,16 +129,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $questoes_originais = consultarSupabase("questoes?id=in.(" . $ids_string . ")");
             
             $questoes_focadas = [];
-            foreach ($questoes_originais as $qo) {
-                $questoes_focadas[$qo['id']] = $qo;
+            if (is_array($questoes_originais)) {
+                foreach ($questoes_originais as $qo) {
+                    $questoes_focadas[$qo['id']] = $qo;
+                }
             }
             
             foreach ($ids_enviados as $qid) {
-                $resposta_dada = isset($respostas_aluno[$qid]) ? intval($respostas_aluno[$qid]) : -1;
-                $resposta_certa = intval($questoes_focadas[$qid]['resposta_correta']);
-                
-                if ($resposta_dada === $resposta_certa) {
-                    $acertos++;
+                if (isset($questoes_focadas[$qid])) {
+                    $resposta_dada = isset($respostas_aluno[$qid]) ? intval($respostas_aluno[$qid]) : -1;
+                    $resposta_certa = intval($questoes_focadas[$qid]['resposta_correta']);
+                    
+                    if ($resposta_dada === $resposta_certa) {
+                        $acertos++;
+                    }
                 }
             }
             
@@ -214,34 +220,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <input type="hidden" name="ra" value="<?php echo htmlspecialchars($aluno_ra); ?>">
                 <input type="hidden" name="email" value="<?php echo htmlspecialchars($aluno_email); ?>">
 
-                <?php foreach ($questoes_prova as $index => $q): ?>
-                    <input type="hidden" name="questoes_ids[]" value="<?php echo $q['id']; ?>">
-                    <div class="questao-bloco">
-                        <p><strong>Questão <?php echo $index + 1; ?>:</strong></p>
-                        <p><?php echo htmlspecialchars($q['enunciado']); ?></p>
-                        
-                        <?php 
-                        $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
-                        if (is_array($opcoes)): 
-                            $opcoes_mapeadas = [];
-                            foreach ($opcoes as $i => $texto) {
-                                $opcoes_mapeadas[] = ['id_original' => $i, 'texto' => $texto];
-                            }
-                            shuffle($opcoes_mapeadas); 
+                <?php if (!empty($questoes_prova)): ?>
+                    <?php foreach ($questoes_prova as $index => $q): ?>
+                        <input type="hidden" name="questoes_ids[]" value="<?php echo $q['id']; ?>">
+                        <div class="questao-bloco">
+                            <p><strong>Questão <?php echo $index + 1; ?>:</strong></p>
+                            <p><?php echo htmlspecialchars($q['enunciado']); ?></p>
                             
-                            foreach ($opcoes_mapeadas as $opt): 
-                        ?>
-                            <label class="opcao-item">
-                                <input type="radio" name="respostas[<?php echo $q['id']; ?>]" value="<?php echo $opt['id_original']; ?>" required>
-                                <?php echo htmlspecialchars($opt['texto']); ?>
-                            </label>
-                        <?php 
-                            endforeach;
-                        endif; 
-                        ?>
-                    </div>
-                <?php endforeach; ?>
-                <button type="submit" class="btn-acao">Finalizar e Enviar Prova</button>
+                            <?php 
+                            $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
+                            if (is_array($opcoes)): 
+                                $opcoes_mapeadas = [];
+                                foreach ($opcoes as $i => $texto) {
+                                    $opcoes_mapeadas[] = ['id_original' => $i, 'texto' => $texto];
+                                }
+                                shuffle($opcoes_mapeadas); 
+                                
+                                foreach ($opcoes_mapeadas as $opt): 
+                            ?>
+                                <label class="opcao-item">
+                                    <input type="radio" name="respostas[<?php echo $q['id']; ?>]" value="<?php echo $opt['id_original']; ?>" required>
+                                    <?php echo htmlspecialchars($opt['texto']); ?>
+                                </label>
+                            <?php 
+                                endforeach;
+                            endif; 
+                            ?>
+                        </div>
+                    <?php endforeach; ?>
+                    <button type="submit" class="btn-acao">Finalizar e Enviar Prova</button>
+                <?php else: ?>
+                    <p>Nenhuma questão foi carregada. Verifique os filtros de disciplina e aulas.</p>
+                <?php endif; ?>
             </form>
 
         <?php elseif ($tela === 'resultado_final'): ?>
