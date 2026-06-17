@@ -10,6 +10,9 @@ if (empty($id_historico)) {
 
 // 1. Busca os dados do aluno e as respostas dele no histórico
 $url_historico = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?id=eq." . urlencode($id_historico);
+
+// Modificação na linha de consulta do histórico:
+$url_historico = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?id=eq." . trim($id_historico);
 $dados_aluno = consultarSupabase($url_historico);
 
 if (empty($dados_aluno) || !isset($dados_aluno[0])) {
