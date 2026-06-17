@@ -1,6 +1,6 @@
 <?php
 // salvahistorico.php - TESTE ISOLADO DE INSERÇÃO DIRETA
-require_once "api/conexao.php";
+require_once "conexao.php";
 
 echo "<h2>🧪 Iniciando Teste de Inserção Isolado...</h2>";
 
