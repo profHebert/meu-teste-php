@@ -1,12 +1,13 @@
 <?php
 // 0. DESVIO DE ROTA: CARREGA A CONEXÃO E O DASHBOARD IMEDIATAMENTE
 if (strpos($_SERVER['REQUEST_URI'], 'dashboard.php') !== false) {
-    require_once "conexao.php"; // <--- ADICIONAR ESTA LINHA AQUI
+    require_once "conexao.php";
     include_once "dashboard.php";
     exit;
 }
 
 require_once "conexao.php";
+require_once "gravar_historico.php"; // <--- ADICIONE ESTA LINHA AQUI
 
 // 1. CAPTURA DA URL COMPATÍVEL COM REQUISIÇÕES GET E POST NA VERCEL
 $url_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -157,14 +158,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             $nota_final = ($acertos / $total_questoes) * 10;
             
+            // $dados_update = [
+            //     "nota_final" => $nota_final,
+            //     "status" => "concluida",
+            //     "respostas_aluno" => json_encode([
+            //         "questoes_sorteadas" => $ids_enviados,
+            //         "escolhas_aluno" => $respostas_aluno
+            //     ])
+            // ];
+
             $dados_update = [
-                "nota_final" => $nota_final,
-                "status" => "concluida",
-                "respostas_aluno" => json_encode([
-                    "questoes_sorteadas" => $ids_enviados,
-                    "escolhas_aluno" => $respostas_aluno
-                ])
+                "nota_final" => floatval($nota_final),
+                "status" => "finalizada"
             ];
+
+            // Dispara a atualização isolada passando o RA
+            $retorno_update = salvarNoHistorico($dados_update, "PATCH", $aluno_ra);
+
+            // Se o Supabase recusar a atualização da nota, avisa na tela
+            if ($retorno_update['codigo'] >= 400) {
+                die("Erro ao FINALIZAR histórico (HTTP " . $retorno_update['codigo'] . "): " . print_r($retorno_update['resposta'], true));
+            }
+
+            $tela = 'resultado_final';
             
             //$url_update = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
             
