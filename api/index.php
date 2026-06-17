@@ -1,18 +1,23 @@
 <?php
 require_once "conexao.php";
 
-// 1. CAPTURA E PARSE DA URL PROTEGIDO PARA VERCEL
-$requisicao = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$url = trim($requisicao, '/');
+// 1. CAPTURA DA URL COMPATÍVEL COM REQUISIÇÕES GET E POST NA VERCEL
+$url_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$url_limpa = trim($url_path, '/');
+$partes = array_values(array_filter(explode('/', $url_limpa)));
 
-// Filtra elementos vazios causados por barras duplicadas
-$partes = array_values(array_filter(explode('/', $url)));
+// Define a instituição e o código de prova garantindo que NUNCA fiquem nulos
+$instituicao  = 'portal';
+$codigo_prova = 'GERAL_atv1';
 
-// Define valores padrão seguros caso a URL venha incompleta
-$instituicao  = (isset($partes[0]) && !empty($partes[0])) ? strtolower($partes[0]) : 'portal';
-$codigo_prova = (isset($partes[1]) && !empty($partes[1])) ? $partes[1] : 'GERAL_atv1';
+if (isset($partes[0]) && !empty($partes[0])) {
+    $instituicao = strtolower($partes[0]);
+}
+if (isset($partes[1]) && !empty($partes[1])) {
+    $codigo_prova = $partes[1];
+}
 
-// Extrai a disciplina do código da prova de forma segura (Ex: DBDSQL_6a_M_atv1 -> DBDSQL)
+// Extrai a sigla da disciplina (Ex: DBDSQL_6a_M_atv1 -> DBDSQL)
 $partes_codigo = explode('_', $codigo_prova);
 $disciplina_url = (isset($partes_codigo[0]) && !empty($partes_codigo[0])) ? strtoupper($partes_codigo[0]) : 'DBDSQL';
 
@@ -39,11 +44,8 @@ $erro = '';
 // 4. PROCESSAMENTO DAS AÇÕES (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
-    //---------------------------------------------------------
     // AÇÃO 1: ALUNO DIGITOU OS DADOS E CLICOU EM INICIAR
-    //---------------------------------------------------------
     if ($acao === 'iniciar') {
-        // Verificar se este RA já tem uma prova iniciada ou concluída para este código de prova
         $endpoint_checa = "historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
         $historico = consultarSupabase($endpoint_checa);
         
@@ -54,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $tela = 'resultado_ja_feito';
                 $nota_final = $registro['nota_final'];
             } else {
-                // ANTI-FRAUDE: Aluno deu F5. Recupera as mesmas questões que foram sorteadas antes
+                // ANTI-FRAUDE: Aluno deu F5. Recupera as mesmas questões
                 $tela = 'prova';
                 $dados_salvos = is_string($registro['respostas_aluno']) ? json_decode($registro['respostas_aluno'], true) : $registro['respostas_aluno'];
                 $ids_sorteados = $dados_salvos['questoes_sorteadas'] ?? [];
@@ -65,11 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } else {
-            // Primeira vez acessando. Filtra dinamicamente as aulas permitidas
+            // Define filtros de aulas baseados na sigla da atividade
             $aulas_filtro = "in.(1,2,3,4,5)"; 
             if (strpos($codigo_prova, 'atv2') !== false) $aulas_filtro = "in.(5,6,7,8)";
             
-            // Busca o universo de questões da disciplina e aulas permitidas
             $endpoint_questoes = "questoes?disciplina=eq." . $disciplina_url . "&numero_aula=" . $aulas_filtro . "&ativa=eq.true";
             $universo_questoes = consultarSupabase($endpoint_questoes);
             
@@ -78,10 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $limite = min(20, count($universo_questoes));
                 $questoes_prova = array_slice($universo_questoes, 0, $limite);
                 
-                // Salva os IDs sorteados para travar o F5
                 $ids_sorteados = array_column($questoes_prova, 'id');
                 
-                // Registra o início da prova no Supabase como 'em_andamento'
                 $dados_insert = [
                     "aluno_nome" => $aluno_nome,
                     "aluno_ra" => $aluno_ra,
@@ -115,9 +114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
-    //---------------------------------------------------------
     // AÇÃO 2: ALUNO MARCOU AS RESPOSTAS E CLICOU EM FINALIZAR
-    //---------------------------------------------------------
     if ($acao === 'finalizar') {
         $ids_enviados = $_POST['questoes_ids'] ?? [];
         $respostas_aluno = $_POST['respostas'] ?? [];
