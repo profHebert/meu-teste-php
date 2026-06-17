@@ -1,4 +1,10 @@
 <?php
+// 0. DESVIO DE ROTA: SE FOR O DASHBOARD, CARREGA O ARQUIVO CORRETO E PARA A EXECUÇÃO
+if (strpos($_SERVER['REQUEST_URI'], 'dashboard.php') !== false) {
+    include_once "dashboard.php";
+    exit;
+}
+
 require_once "conexao.php";
 
 // 1. CAPTURA DA URL COMPATÍVEL COM REQUISIÇÕES GET E POST NA VERCEL
