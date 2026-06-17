@@ -1,17 +1,20 @@
 <?php
 require_once "conexao.php";
 
-// 1. CAPTURA E PARSE DA URL
+// 1. CAPTURA E PARSE DA URL PROTEGIDO PARA VERCEL
 $requisicao = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $url = trim($requisicao, '/');
-$partes = explode('/', $url);
 
-$instituicao  = (!empty($partes[0])) ? strtolower($partes[0]) : 'portal';
-$codigo_prova = (!empty($partes[1])) ? $partes[1] : 'GERAL_atv1';
+// Filtra elementos vazios causados por barras duplicadas
+$partes = array_values(array_filter(explode('/', $url)));
 
-// Extrai a disciplina do código da prova (Ex: ED_2a_N_atv1 -> ED)
+// Define valores padrão seguros caso a URL venha incompleta
+$instituicao  = (isset($partes[0]) && !empty($partes[0])) ? strtolower($partes[0]) : 'portal';
+$codigo_prova = (isset($partes[1]) && !empty($partes[1])) ? $partes[1] : 'GERAL_atv1';
+
+// Extrai a disciplina do código da prova de forma segura (Ex: DBDSQL_6a_M_atv1 -> DBDSQL)
 $partes_codigo = explode('_', $codigo_prova);
-$disciplina_url = !empty($partes_codigo[0]) ? strtoupper($partes_codigo[0]) : 'DBDSQL';
+$disciplina_url = (isset($partes_codigo[0]) && !empty($partes_codigo[0])) ? strtoupper($partes_codigo[0]) : 'DBDSQL';
 
 // 2. CONFIGURAÇÃO DE IDENTIDADE VISUAL
 switch ($instituicao) {
@@ -24,15 +27,9 @@ switch ($instituicao) {
 }
 
 // 3. CONTROLE DE FLUXO DE TELAS
-$tela = 'identificacao'; // identificacao, prova, ou resultado
+$tela = 'identificacao'; 
 $questoes_prova = [];
 $erro = '';
-
-// Variaveis do Aluno (persistidas via POST para simplificar o fluxo)
-$aluno_nome = $_POST['nome'] ?? '';
-$aluno_ra = $_POST['ra'] ?? '';
-$aluno_email = $_POST['email'] ?? '';
-$acao = $_POST['acao'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
