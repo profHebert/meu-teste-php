@@ -1,13 +1,30 @@
 <?php
-// 0. DESVIO DE ROTA: CARREGA A CONEXÃO E O DASHBOARD IMEDIATAMENTE
-if (strpos($_SERVER['REQUEST_URI'], 'dashboard.php') !== false) {
-    require_once "conexao.php";
-    include_once "dashboard.php";
-    exit;
-}
+// =========================================================================
+// api/index.php - CONTROLADOR CENTRAL COM ROTEAMENTO CENTRALIZADO (SWITCH)
+// =========================================================================
 
 require_once "conexao.php";
-require_once "gravar_historico.php"; // <--- ADICIONE ESTA LINHA AQUI
+require_once "gravar_historico.php";
+
+// 1. CAPTURA A PÁGINA SOLICITADA NA URL PARA O SWITCH ROTEADOR
+$request_uri = $_SERVER['REQUEST_URI'];
+$pagina_alvo = parse_url($request_uri, PHP_URL_PATH);
+$pagina_nome = basename($pagina_alvo); // Pega apenas o final (ex: dashboard.php)
+
+// 2. O ROTEADOR CENTRALIZADO (SUGESTÃO DO PROFESSOR)
+switch ($pagina_nome) {
+    case 'dashboard.php':
+        include_once "dashboard.php";
+        exit;
+
+    case 'ver_prova.php':
+        include_once "ver_prova.php";
+        exit;
+}
+
+// =========================================================================
+// 3. SE NÃO FOR UMA PÁGINA ADM, SEGUE O FLUXO NORMAL DE GERAÇÃO DA PROVA
+// =========================================================================
 
 // 1. CAPTURA DA URL COMPATÍVEL COM REQUISIÇÕES GET E POST NA VERCEL
 $url_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -28,6 +45,49 @@ if (isset($partes[1]) && !empty($partes[1])) {
 // Extrai a sigla da disciplina (Ex: DBDSQL_6a_M_atv1 -> DBDSQL)
 $partes_codigo = explode('_', $codigo_prova);
 $disciplina_url = (isset($partes_codigo[0]) && !empty($partes_codigo[0])) ? strtoupper($partes_codigo[0]) : 'DBDSQL';
+
+// 2. CONFIGURAÇÃO DE IDENTIDADE VISUAL
+switch ($instituicao) {
+    case 'fecap':
+        $nome_faculdade = "FECAP"; $cor_fundo = "#004d3d"; $cor_botao = "#deff9a"; $cor_texto_btn = "#004d3d"; break;
+    case 'uninove':
+        $nome_faculdade = "UNINOVE"; $cor_fundo = "#002d62"; $cor_botao = "#fbb034"; $cor_texto_btn = "#ffffff"; break;
+    default:
+        $nome_faculdade = "Portal de Provas"; $cor_fundo = "#1a1a1a"; $cor_botao = "#0070f3"; $cor_texto_btn = "#ffffff"; break;
+}
+
+// ... resto do seu código (session_start, HTML, blocos de telas, etc.) ...
+
+
+// // 0. DESVIO DE ROTA: CARREGA A CONEXÃO E O DASHBOARD IMEDIATAMENTE
+// if (strpos($_SERVER['REQUEST_URI'], 'dashboard.php') !== false) {
+//     require_once "conexao.php";
+//     include_once "dashboard.php";
+//     exit;
+// }
+
+// require_once "conexao.php";
+// require_once "gravar_historico.php"; // <--- ADICIONE ESTA LINHA AQUI
+
+// // 1. CAPTURA DA URL COMPATÍVEL COM REQUISIÇÕES GET E POST NA VERCEL
+// $url_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+// $url_limpa = trim($url_path, '/');
+// $partes = array_values(array_filter(explode('/', $url_limpa)));
+
+// // Define a instituição e o código de prova garantindo que NUNCA fiquem nulos
+// $instituicao  = 'portal';
+// $codigo_prova = 'GERAL_atv1';
+
+// if (isset($partes[0]) && !empty($partes[0])) {
+//     $instituicao = strtolower($partes[0]);
+// }
+// if (isset($partes[1]) && !empty($partes[1])) {
+//     $codigo_prova = $partes[1];
+// }
+
+// // Extrai a sigla da disciplina (Ex: DBDSQL_6a_M_atv1 -> DBDSQL)
+// $partes_codigo = explode('_', $codigo_prova);
+// $disciplina_url = (isset($partes_codigo[0]) && !empty($partes_codigo[0])) ? strtoupper($partes_codigo[0]) : 'DBDSQL';
 
 // 2. CONFIGURAÇÃO DE IDENTIDADE VISUAL
 switch ($instituicao) {
