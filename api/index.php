@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (is_array($universo_questoes) && !empty($universo_questoes)) {
                 shuffle($universo_questoes);
-                $limite = min(20, count($universo_questoes));
+                $limite = min(5, count($universo_questoes));
                 $questoes_prova = array_slice($universo_questoes, 0, $limite);
                 
                 $ids_sorteados = array_column($questoes_prova, 'id');
