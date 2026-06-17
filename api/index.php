@@ -210,13 +210,18 @@ function clean_input($data) {
             
             <?php foreach ($_SESSION['questoes_prova'] as $index => $q): ?>
                 <div class="questao-box">
-                    <p><strong>Questão <?php echo ($index + 1); ?>:</strong> <?php echo htmlspecialchars($q['enunciated'] ?? $q['enunciado']); ?></p>
+                    <p><strong>Questão <?php echo ($index + 1); ?>:</strong> <?php echo htmlspecialchars($q['enunciado'] ?? ''); ?></p>
                     
                     <?php 
-                    $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
-                    if (is_array($opcoes)):
-                        foreach ($opcoes as $idx_opcao => $opcao): 
-                    ?>
+// Garante que as opções sejam convertidas para array, mesmo que venham como string JSON do banco
+$opcoes = $q['opcoes'] ?? [];
+if (is_string($opcoes)) {
+    $opcoes = json_decode($opcoes, true);
+}
+
+if (is_array($opcoes)):
+    foreach ($opcoes as $idx_opcao => $opcao): 
+?>
                         <label class="opcao-item">
                             <input type="radio" name="respostas[<?php echo $q['id']; ?>]" value="<?php echo $idx_opcao; ?>" required>
                             <?php echo htmlspecialchars($opcao); ?>
