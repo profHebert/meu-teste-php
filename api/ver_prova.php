@@ -33,18 +33,18 @@ foreach ($todas_questoes as $q) {
 }
 
 // Função para buscar dados no Supabase (copiada do index para independência)
-function consultarSupabase($url) {
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "apikey: " . $GLOBALS['supabase_key'],
-        "Authorization: Bearer " . $GLOBALS['supabase_key'],
-        "Content-Type: application/json"
-    ]);
-    $resposta = curl_exec($ch);
-    curl_close($ch);
-    return json_decode($resposta, true) ?: [];
-}
+// function consultarSupabase($url) {
+//     $ch = curl_init($url);
+//     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+//     curl_setopt($ch, CURLOPT_HTTPHEADER, [
+//         "apikey: " . $GLOBALS['supabase_key'],
+//         "Authorization: Bearer " . $GLOBALS['supabase_key'],
+//         "Content-Type: application/json"
+//     ]);
+//     $resposta = curl_exec($ch);
+//     curl_close($ch);
+//     return json_decode($resposta, true) ?: [];
+// }
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
