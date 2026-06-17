@@ -90,14 +90,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $ids_sorteados = array_column($questoes_prova, 'id');
                 
+                
+                // Registra o início da prova no Supabase como 'em_andamento'
                 $dados_insert = [
                     "aluno_nome" => $aluno_nome,
                     "aluno_ra" => $aluno_ra,
                     "aluno_email" => $aluno_email,
                     "instituicao" => $instituicao,
-                    "turma" => $codigo_prova,
-                    "codigo_prova" => $codigo_prova,
-                    "numero_aula" => 0,
+                    "turma" => $codigo_prova,        // <-- Força o código da URL (ex: DBDSQL_6a_M_atv1)
+                    "codigo_prova" => $codigo_prova, // <-- Garante a mesma coisa aqui
+                    "numero_aula" => 1,              // Mudado de 0 para 1 para não sumir nos filtros
                     "nota_final" => 0.00,
                     "status" => "em_andamento",
                     "respostas_aluno" => json_encode(["questoes_sorteadas" => $ids_sorteados])
@@ -164,7 +166,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ])
             ];
             
-            $url_update = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
+            //$url_update = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?aluno_ra=eq." . urlencode($aluno_ra) . "&codigo_prova=eq." . urlencode($codigo_prova);
+            
+            // Filtra puramente pelo RA do aluno que iniciou a sessão para aplicar a nota
+            $url_update = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?aluno_ra=eq." . urlencode($aluno_ra);
             $ch = curl_init($url_update);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PATCH");
