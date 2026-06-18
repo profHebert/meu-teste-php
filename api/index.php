@@ -17,9 +17,12 @@ switch ($pagina_nome) {
         include_once "dashboard.php";
         exit;
 
+    case 'ver_prova':
     case 'ver_prova.php':
         include_once "ver_prova.php";
         exit;
+    
+    
 }
 
 // =========================================================================

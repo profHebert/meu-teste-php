@@ -156,9 +156,9 @@ $media_geral = $total_provas > 0 ? ($soma_notas / $total_provas) : 0;
                                     <?php echo number_format($nota, 2, ',', '.'); ?>
                                 </td>
                                 <td>
-            <a href="ver_prova.php?id=<?php echo $linha['id']; ?>" style="background-color: #3182ce; color: #fff; padding: 4px 10px; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: bold;">
-                Ver Detalhes
-            </a>
+           <a href="/ver_prova?id=<?php echo $linha['id']; ?>" style="color: #04d361; text-decoration: none; font-weight: bold;">
+        <?php echo htmlspecialchars($linha['aluno_nome']); ?> 🔍
+        </a>
         </td>
                             </tr>
                         <?php endforeach; ?>
