@@ -10,8 +10,10 @@ if (empty($id_historico)) {
     die("<h3>Erro: ID do histórico não fornecido.</h3>");
 }
 
-// Monta a URL usando a variável $supabase_url herdada da conexao.php
-$url_historico = $supabase_url . "/rest/v1/historico_provas?id=eq." . trim($id_historico);
+// Remove qualquer barra sobressalente do final da URL do Supabase e monta o caminho limpo
+$url_limpa_supabase = rtrim($supabase_url, '/');
+$url_historico = $url_limpa_supabase . "/rest/v1/historico_provas?id=eq." . trim($id_historico);
+
 $dados_aluno = consultarSupabase($url_historico);
 echo "URL testada: " . $url_historico . "<br>";
 echo "Retorno do banco: ";
