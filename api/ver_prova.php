@@ -31,6 +31,47 @@ if (empty($dados_aluno) || !isset($dados_aluno[0])) {
     die("<h3>Erro: Registro de prova não encontrado.</h3>");
 }
 
+<?php
+// api/ver_prova.php
+
+$id_historico = isset($_GET['id']) ? trim($_GET['id']) : '';
+
+if (empty($id_historico)) {
+    die("<h3>Erro: ID do histórico não fornecido.</h3>");
+}
+
+// 1. Monta a URL idêntica à do dashboard, apenas injetando o filtro no final
+$url_historico = rtrim($supabase_url, '/') . "/rest/v1/historico_provas?id=eq." . $id_historico;
+
+// 2. Configura o cURL injetando os cabeçalhos explicitamente (O segredo do PostgREST)
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url_historico);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "apikey: " . $supabase_key,
+    "Authorization: Bearer " . $supabase_key,
+    "Content-Type: application/json",
+    "Accept: application/json"
+]);
+
+$resposta = curl_exec($ch);
+curl_close($ch);
+
+// 3. Transforma o resultado de JSON para Array do PHP
+$dados_aluno = json_decode($resposta, true);
+
+// SEU DEBUG PARA TESTAR:
+// print_r($dados_aluno); exit;
+
+if (empty($dados_aluno) || isset($dados_aluno['code'])) {
+    echo "<h3>Erro ao buscar os dados da prova.</h3>";
+    echo "Retorno do banco: <pre>"; print_r($dados_aluno); echo "</pre>";
+    exit;
+}
+
+// Se chegou até aqui, os dados estão na variável!
+$prova_aluno = $dados_aluno[0];
+
 $prova = $dados_aluno[0];
 $respostas_aluno = json_decode($prova['respostas_aluno'], true) ?: [];
 
