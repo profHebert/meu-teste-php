@@ -31,7 +31,6 @@ if (empty($dados_aluno) || !isset($dados_aluno[0])) {
     die("<h3>Erro: Registro de prova não encontrado.</h3>");
 }
 
-<?php
 // api/ver_prova.php
 
 $id_historico = isset($_GET['id']) ? trim($_GET['id']) : '';
