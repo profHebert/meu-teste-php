@@ -56,6 +56,10 @@ curl_setopt($ch_questoes, CURLOPT_HTTPHEADER, [
 $resposta_questoes = curl_exec($ch_questoes);
 curl_close($ch_questoes);
 
+// 🔍 INSIRA ESSAS DUAS LINHAS DE DEBUG AQUI:
+echo "Sigla buscada: " . $disciplina_sigla . "<br>";
+echo "Retorno das questoes: <pre>"; print_r(json_decode($resposta_questoes, true)); echo "</pre>"; exit;
+
 $todas_questoes = json_decode($resposta_questoes, true) ?: [];
 
 // 5. Indexação das questões pelo ID para busca rápida e renderização do HTML
