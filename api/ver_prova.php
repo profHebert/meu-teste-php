@@ -13,6 +13,10 @@ if (empty($id_historico)) {
 // Monta a URL usando a variável $supabase_url herdada da conexao.php
 $url_historico = $supabase_url . "/rest/v1/historico_provas?id=eq." . trim($id_historico);
 $dados_aluno = consultarSupabase($url_historico);
+echo "URL testada: " . $url_historico . "<br>";
+echo "Retorno do banco: ";
+print_r($dados_aluno);
+exit;
 
 // 1. Busca os dados do aluno e as respostas dele no histórico
 $url_historico = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?id=eq." . urlencode($id_historico);
