@@ -37,6 +37,9 @@ if (empty($dados_aluno) || isset($dados_aluno['code'])) {
 $prova = $dados_aluno[0];
 $respostas_aluno = json_decode($prova['respostas_aluno'], true) ?: [];
 
+// 🔍 ADICIONE ESTA LINHA DE DEBUG AQUI:
+echo "Conteúdo das respostas do aluno: <pre>"; print_r($respostas_aluno); echo "</pre>"; exit;
+
 // 4. Identificação da disciplina a partir do código da prova para buscar o gabarito das questões
 $prova_parts = explode('_', $prova['codigo_prova']);
 $disciplina_sigla = $prova_parts[0] ?? '';
