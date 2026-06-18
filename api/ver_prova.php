@@ -117,27 +117,38 @@ foreach ($todas_questoes as $q) {
         </div>
     </div>
 
-   <h2>Questões Respondidas</h2>
+<h2>Questões Respondidas</h2>
 
 <?php 
 $num = 1;
 
-// Varre a lista de questões que vieram do banco (as 30 da disciplina)
-foreach ($todas_questoes as $q): 
-    $uuid_questao = $q['id'];
+// 1. Limpeza e decodificação padrão do JSON vindo do banco
+$json_bruto = $prova['respostas_aluno'] ?? '';
+if (is_array($json_bruto)) {
+    $json_bruto = json_encode($json_bruto);
+}
+$json_limpo = stripslashes(trim($json_bruto, '"'));
+$dados_resposta = json_decode($json_limpo, true) ?: [];
 
-    // SE o UUID da questão NÃO estiver presente nas chaves das respostas do aluno,
-    // significa que esta questão não fazia parte da prova dele. Pulamos!
-    if (!array_key_exists($uuid_questao, $respostas_aluno)) {
+// 2. Extrai os dois arrays que acabamos de gravar com sucesso
+$sorteadas = $dados_resposta['questoes_sorteadas'] ?? [];
+$alternativas_aluno = $dados_resposta['alternativas_aluno'] ?? [];
+
+// 3. O Loop Inteligente pelas questões
+foreach ($todas_questoes as $q): 
+    $uuid_questao = trim($q['id']);
+
+    // Filtro: Se não foi sorteada para este aluno, pula!
+    if (!in_array($uuid_questao, $sorteadas)) {
         continue;
     }
     
-    // Captura a alternativa que o aluno escolheu para este UUID
-    $resposta_marcada = $respostas_aluno[$uuid_questao];
+    // 🔥 CAPTURA REAL: Busca qual alternativa o aluno marcou para ESTA questão específica
+    // Se ele não tiver marcado nada, assume -1 para não coincidir com a alternativa 0
+    $resposta_marcada = isset($alternativas_aluno[$uuid_questao]) ? intval($alternativas_aluno[$uuid_questao]) : -1;
     
     $gabarito = intval($q['resposta_correta']);
-    $resp_aluno = intval($resposta_marcada);
-    $acertou = ($resp_aluno === $gabarito);
+    $acertou = ($resposta_marcada === $gabarito);
     
     $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
 ?>
@@ -145,7 +156,7 @@ foreach ($todas_questoes as $q):
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <strong>Questão <?php echo $num++; ?></strong>
             <span class="status-badge <?php echo $acertou ? 'c' : 'e'; ?>">
-                <?php echo $acertou ? 'Acertou' : 'Errou'; ?>
+                <?php echo $acertou ? '🟢 Acertou' : '🔴 Errou'; ?>
             </span>
         </div>
         <p style="margin: 0 0 15px 0; font-size: 16px;"><?php echo htmlspecialchars($q['enunciado']); ?></p>
@@ -153,18 +164,27 @@ foreach ($todas_questoes as $q):
         <?php if (is_array($opcoes)): ?>
             <?php foreach ($opcoes as $idx => $texto_opcao): 
                 $classe_opcao = '';
+                
+                // Se for a alternativa que o aluno marcou
+                if ($idx === $resposta_marcada) {
+                    $classe_opcao = $acertou ? 'opcao-correta-aluno' : 'opcao-errada-aluno';
+                }
+                // Se for o gabarito oficial (para mostrar onde era o certo mesmo se ele errou)
                 if ($idx === $gabarito) {
-                    $classe_opcao = 'gabarito';
-                } elseif ($idx === $resp_aluno && !$acertou) {
-                    $classe_opcao = 'marcada-errada';
+                    $classe_opcao .= ' gabarito-oficial';
                 }
             ?>
-                <div class="opcao <?php echo $classe_opcao; ?>">
+                <div class="opcao <?php echo $classe_opcao; ?>" style="padding: 8px; margin: 4px 0; border-radius: 4px;">
                     <?php 
-                    if ($idx === $resp_aluno) echo "🔵 ";
                     echo htmlspecialchars($texto_opcao); 
-                    if ($idx === $gabarito) echo " ✔ (Gabarito)";
-                    if ($idx === $resp_aluno && !$acertou) echo " ❌ (Marcada pelo aluno)";
+                    
+                    // Tags de texto para ajudar na leitura
+                    if ($idx === $resposta_marcada) {
+                        echo " ──> 👤 Sua Resposta";
+                    }
+                    if ($idx === $gabarito) {
+                        echo " ✔ (Gabarito Oficial)";
+                    }
                     ?>
                 </div>
             <?php endforeach; ?>
