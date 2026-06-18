@@ -2,47 +2,16 @@
 // api/ver_prova.php - VISUALIZADOR DE PROVA CORRIGIDA
 require_once "conexao.php";
 
-
-// No topo do api/ver_prova.php:
-$id_historico = $_GET['id'] ?? '';
-
-if (empty($id_historico)) {
-    die("<h3>Erro: ID do histórico não fornecido.</h3>");
-}
-
-// Remove qualquer barra sobressalente do final da URL do Supabase e monta o caminho limpo
-$url_limpa_supabase = rtrim($supabase_url, '/');
-$url_historico = $url_limpa_supabase . "/rest/v1/historico_provas?id=eq." . trim($id_historico);
-
-$dados_aluno = consultarSupabase($url_historico);
-echo "URL testada: " . $url_historico . "<br>";
-echo "Retorno do banco: ";
-print_r($dados_aluno);
-exit;
-
-// 1. Busca os dados do aluno e as respostas dele no histórico
-$url_historico = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?id=eq." . urlencode($id_historico);
-
-// Modificação na linha de consulta do histórico:
-$url_historico = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?id=eq." . trim($id_historico);
-$dados_aluno = consultarSupabase($url_historico);
-
-if (empty($dados_aluno) || !isset($dados_aluno[0])) {
-    die("<h3>Erro: Registro de prova não encontrado.</h3>");
-}
-
-// api/ver_prova.php
-
+// 1. Captura e validação do ID enviado via URL
 $id_historico = isset($_GET['id']) ? trim($_GET['id']) : '';
 
 if (empty($id_historico)) {
     die("<h3>Erro: ID do histórico não fornecido.</h3>");
 }
 
-// 1. Monta a URL idêntica à do dashboard, apenas injetando o filtro no final
+// 2. Montagem da URL limpa e requisição cURL com cabeçalhos explícitos para o Supabase
 $url_historico = rtrim($supabase_url, '/') . "/rest/v1/historico_provas?id=eq." . $id_historico;
 
-// 2. Configura o cURL injetando os cabeçalhos explicitamente (O segredo do PostgREST)
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $url_historico);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -56,11 +25,8 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 $resposta = curl_exec($ch);
 curl_close($ch);
 
-// 3. Transforma o resultado de JSON para Array do PHP
+// 3. Decodificação dos dados do histórico do aluno
 $dados_aluno = json_decode($resposta, true);
-
-// SEU DEBUG PARA TESTAR:
-// print_r($dados_aluno); exit;
 
 if (empty($dados_aluno) || isset($dados_aluno['code'])) {
     echo "<h3>Erro ao buscar os dados da prova.</h3>";
@@ -68,38 +34,35 @@ if (empty($dados_aluno) || isset($dados_aluno['code'])) {
     exit;
 }
 
-// Se chegou até aqui, os dados estão na variável!
-$prova_aluno = $dados_aluno[0];
-
 $prova = $dados_aluno[0];
 $respostas_aluno = json_decode($prova['respostas_aluno'], true) ?: [];
 
-// 2. Busca TODAS as questões daquela disciplina para bater o gabarito
+// 4. Identificação da disciplina a partir do código da prova para buscar o gabarito das questões
 $prova_parts = explode('_', $prova['codigo_prova']);
 $disciplina_sigla = $prova_parts[0] ?? '';
 
-$url_questoes = $GLOBALS['supabase_url'] . "/rest/v1/questoes?disciplina=eq." . urlencode($disciplina_sigla);
-$todas_questoes = consultarSupabase($url_questoes);
+$url_questoes = rtrim($supabase_url, '/') . "/rest/v1/questoes?disciplina=eq." . urlencode($disciplina_sigla);
 
-// Indexa as questões pelo ID para busca rápida
+$ch_questoes = curl_init();
+curl_setopt($ch_questoes, CURLOPT_URL, $url_questoes);
+curl_setopt($ch_questoes, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch_questoes, CURLOPT_HTTPHEADER, [
+    "apikey: " . $supabase_key,
+    "Authorization: Bearer " . $supabase_key,
+    "Content-Type: application/json",
+    "Accept: application/json"
+]);
+
+$resposta_questoes = curl_exec($ch_questoes);
+curl_close($ch_questoes);
+
+$todas_questoes = json_decode($resposta_questoes, true) ?: [];
+
+// 5. Indexação das questões pelo ID para busca rápida e renderização do HTML
 $questoes_indexadas = [];
 foreach ($todas_questoes as $q) {
     $questoes_indexadas[$q['id']] = $q;
 }
-
-// Função para buscar dados no Supabase (copiada do index para independência)
-// function consultarSupabase($url) {
-//     $ch = curl_init($url);
-//     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-//     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-//         "apikey: " . $GLOBALS['supabase_key'],
-//         "Authorization: Bearer " . $GLOBALS['supabase_key'],
-//         "Content-Type: application/json"
-//     ]);
-//     $resposta = curl_exec($ch);
-//     curl_close($ch);
-//     return json_decode($resposta, true) ?: [];
-// }
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -174,9 +137,9 @@ foreach ($todas_questoes as $q) {
                 <?php foreach ($opcoes as $idx => $texto_opcao): 
                     $classe_opcao = '';
                     if ($idx === $gabarito) {
-                        $classe_opcao = 'gabarito'; // Destaca o gabarito em verde
+                        $classe_opcao = 'gabarito';
                     } elseif ($idx === $resp_aluno && !$acertou) {
-                        $classe_opcao = 'marcada-errada'; // Destaca o erro em vermelho
+                        $classe_opcao = 'marcada-errada';
                     }
                 ?>
                     <div class="opcao <?php echo $classe_opcao; ?>">
