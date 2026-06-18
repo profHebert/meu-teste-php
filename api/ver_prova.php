@@ -2,11 +2,17 @@
 // api/ver_prova.php - VISUALIZADOR DE PROVA CORRIGIDA
 require_once "conexao.php";
 
+
+// No topo do api/ver_prova.php:
 $id_historico = $_GET['id'] ?? '';
 
 if (empty($id_historico)) {
     die("<h3>Erro: ID do histórico não fornecido.</h3>");
 }
+
+// Monta a URL usando a variável $supabase_url herdada da conexao.php
+$url_historico = $supabase_url . "/rest/v1/historico_provas?id=eq." . trim($id_historico);
+$dados_aluno = consultarSupabase($url_historico);
 
 // 1. Busca os dados do aluno e as respostas dele no histórico
 $url_historico = $GLOBALS['supabase_url'] . "/rest/v1/historico_provas?id=eq." . urlencode($id_historico);
