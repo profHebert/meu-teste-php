@@ -60,8 +60,8 @@ $resposta_questoes = curl_exec($ch_questoes);
 curl_close($ch_questoes);
 
 // 🔍 INSIRA ESSAS DUAS LINHAS DE DEBUG AQUI:
-echo "Sigla buscada: " . $disciplina_sigla . "<br>";
-echo "Retorno das questoes: <pre>"; print_r(json_decode($resposta_questoes, true)); echo "</pre>"; exit;
+// echo "Sigla buscada: " . $disciplina_sigla . "<br>";
+// echo "Retorno das questoes: <pre>"; print_r(json_decode($resposta_questoes, true)); echo "</pre>"; exit;
 
 $todas_questoes = json_decode($resposta_questoes, true) ?: [];
 
