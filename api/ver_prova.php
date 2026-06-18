@@ -118,10 +118,17 @@ foreach ($todas_questoes as $q) {
 
     <?php 
     $num = 1;
-    foreach ($respostas_aluno as $id_questao => $resposta_marcada): 
-        if (!isset($questoes_indexadas[$id_questao])) continue;
+    foreach ($todas_questoes as $q): 
+        $id_questao = $q['id'];
+
+        // 🔥 O PULO DO GATO: Se o ID desta questão NÃO estiver nas respostas do aluno, pula para a próxima!
+        if (!array_key_exists($id_questao, $respostas_aluno)) {
+            continue;
+        }
         
-        $q = $questoes_indexadas[$id_questao];
+        // Captura a resposta que o aluno deu para ESTA questão específica
+        $resposta_marcada = $respostas_aluno[$id_questao];
+        
         $gabarito = intval($q['resposta_correta']);
         $resp_aluno = intval($resposta_marcada);
         $acertou = ($resp_aluno === $gabarito);
