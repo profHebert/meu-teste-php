@@ -119,19 +119,18 @@ foreach ($todas_questoes as $q) {
 <?php 
 $num = 1;
 
-// Mudança crucial: varremos diretamente as respostas que o ALUNO enviou
-foreach ($respostas_aluno as $id_questao_aluno => $resposta_marcada): 
-    
-    // Forçamos a busca indexada. Se a questão não existir no pacote do banco, pulamos
-    // (Ajustamos para testar a chave tanto como string quanto convertida para inteiro)
-    $id_busca = is_numeric($id_questao_aluno) ? intval($id_questao_aluno) : $id_questao_aluno;
-    
-    if (!isset($questoes_indexadas[$id_busca])) {
+// Varre a lista de questões que vieram do banco (as 30 da disciplina)
+foreach ($todas_questoes as $q): 
+    $uuid_questao = $q['id'];
+
+    // SE o UUID da questão NÃO estiver presente nas chaves das respostas do aluno,
+    // significa que esta questão não fazia parte da prova dele. Pulamos!
+    if (!array_key_exists($uuid_questao, $respostas_aluno)) {
         continue;
     }
     
-    // Captura a questão correta mapeada pelo ID correspondente
-    $q = $questoes_indexadas[$id_busca];
+    // Captura a alternativa que o aluno escolheu para este UUID
+    $resposta_marcada = $respostas_aluno[$uuid_questao];
     
     $gabarito = intval($q['resposta_correta']);
     $resp_aluno = intval($resposta_marcada);
