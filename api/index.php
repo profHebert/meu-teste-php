@@ -230,13 +230,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             //     ])
             // ];
 
-            $dados_update = [
-                "nota_final" => floatval($nota_final),
-                "status" => "finalizada"
+            // $dados_update = [
+            //     "nota_final" => floatval($nota_final),
+            //     "status" => "finalizada"
+            // ];
+
+            // // Dispara a atualização isolada passando o RA
+            // $retorno_update = salvarNoHistorico($dados_update, "PATCH", $aluno_ra);
+
+            $nota_final = ($acertos / $total_questoes) * 10;
+            
+            // 🔥 SOLUÇÃO: Junta as questões sorteadas e o que o aluno clicou no mesmo JSON
+            $respostas_completas = [
+                "questoes_sorteadas" => $ids_enviados,
+                "alternativas_aluno" => $respostas_aluno // Salva o array [id_da_questao => opcao_marcada]
             ];
 
-            // Dispara a atualização isolada passando o RA
+            $dados_update = [
+                "nota_final" => floatval($nota_final),
+                "status" => "concluida", // Alterado para bater com a verificação de 'concluida' do início do arquivo
+                "respostas_aluno" => json_encode($respostas_completas, JSON_UNESCAPED_UNICODE) // Grava o objeto completo
+            ];
+
+            // Dispara a atualização unificada passando o RA para o seu arquivo auxiliar
             $retorno_update = salvarNoHistorico($dados_update, "PATCH", $aluno_ra);
+
+            // Se o Supabase recusar a atualização da nota, avisa na tela
+            if ($retorno_update['codigo'] >= 400) {
+                die("Erro ao FINALIZAR histórico (HTTP " . $retorno_update['codigo'] . "): " . print_r($retorno_update['resposta'], true));
+            }
+
+            $tela = 'resultado_final';
+            
+            // Nota: Removido o segundo bloco cURL duplicado que rodava logo abaixo 
+            // para evitar o envio de requisições redundantes ao Supabase.
 
             // Se o Supabase recusar a atualização da nota, avisa na tela
             if ($retorno_update['codigo'] >= 400) {
