@@ -1,128 +1,125 @@
 <?php
-// api/ver_prova.php - VISUALIZADOR DE PROVA CORRIGIDA
-require_once "conexao.php";
-
-// 1. Captura e validação do ID enviado via URL
-$id_historico = isset($_GET['id']) ? trim($_GET['id']) : '';
-
-if (empty($id_historico)) {
-    die("<h3>Erro: ID do histórico não fornecido.</h3>");
-}
-
-// 2. Montagem da URL limpa e requisição cURL com cabeçalhos explícitos para o Supabase
-$url_historico = rtrim($supabase_url, '/') . "/rest/v1/historico_provas?id=eq." . $id_historico;
-
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $url_historico);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "apikey: " . $supabase_key,
-    "Authorization: Bearer " . $supabase_key,
-    "Content-Type: application/json",
-    "Accept: application/json"
-]);
-
-$resposta = curl_exec($ch);
-curl_close($ch);
-
-// 3. Decodificação dos dados do histórico do aluno
-$dados_aluno = json_decode($resposta, true);
-
-if (empty($dados_aluno) || isset($dados_aluno['code'])) {
-    echo "<h3>Erro ao buscar os dados da prova.</h3>";
-    echo "Retorno do banco: <pre>"; print_r($dados_aluno); echo "</pre>";
-    exit;
-}
-
-$prova = $dados_aluno[0];
-$respostas_aluno = json_decode($prova['respostas_aluno'], true) ?: [];
-
-// 🔍 ADICIONE ESTA LINHA DE DEBUG AQUI:
-// echo "Conteúdo das respostas do aluno: <pre>"; print_r($respostas_aluno); echo "</pre>"; exit;
-
-// 4. Identificação da disciplina a partir do código da prova para buscar o gabarito das questões
-$prova_parts = explode('_', $prova['codigo_prova']);
-$disciplina_sigla = $prova_parts[0] ?? '';
-
-$url_questoes = rtrim($supabase_url, '/') . "/rest/v1/questoes?disciplina=eq." . urlencode($disciplina_sigla);
-
-$ch_questoes = curl_init();
-curl_setopt($ch_questoes, CURLOPT_URL, $url_questoes);
-curl_setopt($ch_questoes, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch_questoes, CURLOPT_HTTPHEADER, [
-    "apikey: " . $supabase_key,
-    "Authorization: Bearer " . $supabase_key,
-    "Content-Type: application/json",
-    "Accept: application/json"
-]);
-
-$resposta_questoes = curl_exec($ch_questoes);
-curl_close($ch_questoes);
-
-// 🔍 INSIRA ESSAS DUAS LINHAS DE DEBUG AQUI:
-// echo "Sigla buscada: " . $disciplina_sigla . "<br>";
-// echo "Retorno das questoes: <pre>"; print_r(json_decode($resposta_questoes, true)); echo "</pre>"; exit;
-
-$todas_questoes = json_decode($resposta_questoes, true) ?: [];
-
-// 5. Indexação das questões pelo ID para busca rápida e renderização do HTML
-$questoes_indexadas = [];
-foreach ($todas_questoes as $q) {
-    $questoes_indexadas[$q['id']] = $q;
-}
+//===================================================================
+// CONFIGURAÇÃO DOS VALORES DE PONTUAÇÃO (PREPARAÇÃO PARA O FUTURO)
+//===================================================================
+$total_questoes_sorteadas = count($sorteadas) > 0 ? count($sorteadas) : 5;
+$valor_por_questao = 10 / $total_questoes_sorteadas; // Ex: 10 pontos / 5 questões = 2 pontos cada
 ?>
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>Correção Detalhada - <?php echo htmlspecialchars($prova['aluno_nome']); ?></title>
-    <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #121214; color: #e1e1e6; padding: 40px; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; background: #202024; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-        .header { border-bottom: 2px solid #29292e; padding-bottom: 20px; margin-bottom: 30px; }
-        .header h1 { margin: 0; color: #04d361; font-size: 24px; }
-        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; font-size: 14px; color: #a8a8b3; }
-        .badge-nota { font-size: 28px; font-weight: bold; color: #04d361; text-align: right; }
-        .questao-box { background: #29292e; padding: 20px; border-radius: 6px; margin-bottom: 25px; border-left: 6px solid #48484a; }
-        .questao-box.correta { border-left-color: #04d361; }
-        .questao-box.errada { border-left-color: #f75a68; }
-        .opcao { padding: 10px; margin: 8px 0; border-radius: 4px; background: #202024; font-size: 15px; }
-        .opcao.marcada-errada { background: #f75a68; color: #fff; font-weight: bold; }
-        .opcao.gabarito { background: #04d361; color: #fff; font-weight: bold; }
-        .btn-voltar { display: inline-block; background: #48484a; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; margin-bottom: 20px; }
-        .btn-voltar:hover { background: #5a5a5c; }
-        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
-        .status-badge.c { background: #123924; color: #04d361; }
-        .status-badge.e { background: #411a1d; color: #f75a68; }
-    </style>
-</head>
-<body>
 
-<div class="container">
-    <a href="javascript:history.back()" class="btn-voltar">← Voltar ao Painel</a>
-    
-    <div class="header">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1>Prova Corrigida de <?php echo htmlspecialchars($prova['aluno_nome']); ?></h1>
-                <div class="meta-grid">
-                    <div><strong>RA:</strong> <?php echo htmlspecialchars($prova['aluno_ra']); ?></div>
-                    <div><strong>Avaliação:</strong> <?php echo htmlspecialchars($prova['codigo_prova']); ?></div>
-                    <div><strong>Data/Hora:</strong> <?php echo date('d/m/Y H:i', strtotime($prova['created_at'])); ?></div>
-                </div>
-            </div>
-            <div class="badge-nota">
-                Nota: <?php echo number_format($prova['nota_final'], 2, ',', '.'); ?>
-            </div>
-        </div>
-    </div>
+<style>
+    body {
+        background-color: #f0ebf8; /* Fundo lavanda bem claro clássico do Forms */
+        color: #202124;
+        font-family: 'Roboto', Helvetica, Arial, sans-serif;
+    }
+    .titulo-secao {
+        color: #202124;
+        font-size: 22px;
+        margin: 30px 0 15px 0;
+        font-weight: 400;
+    }
+    /* Container base da questão */
+    .questao-box {
+        background: #ffffff;
+        border: 1px solid #dadce0;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        padding: 24px;
+        position: relative;
+        box-shadow: 0 1px 3px 0 rgba(60,64,67,0.3);
+        overflow: hidden;
+    }
+    /* Faixas Laterais de Feedback */
+    .questao-box.correta {
+        border-left: 5px solid #137333; /* Verde Google */
+        background-color: #f1f8f5;     /* Fundo verde suave */
+    }
+    .questao-box.errada {
+        border-left: 5px solid #c5221f;  /* Vermelho Google */
+        background-color: #fce8e6;      /* Fundo vermelho suave */
+    }
+    /* Badge de Pontos Superior Direito */
+    .pontuacao-badge {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        font-size: 14px;
+        color: #5f6368;
+    }
+    /* Enunciado */
+    .enunciado-texto {
+        font-size: 16px;
+        line-height: 24px;
+        margin: 0 0 20px 0;
+        max-width: 85%;
+        color: #202124;
+    }
+    /* Opções */
+    .opcao-container {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        margin: 8px 0;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    /* Estilização dos inputs simulados */
+    .radio-simulado {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid #5f6368;
+        margin-right: 14px;
+        display: inline-block;
+        flex-shrink: 0;
+        position: relative;
+    }
+    /* Marcador quando a opção foi a escolhida pelo aluno */
+    .opcao-marcada .radio-simulado {
+        border-color: #202124;
+        background: radial-gradient(circle, #202124 40%, transparent 50%);
+    }
+    /* Destaques visuais das alternativas com base nos acertos/erros */
+    .opcao-correta-aluno {
+        background-color: #e6f4ea; /* Verde mais forte para o preenchimento da linha certa */
+        font-weight: 500;
+    }
+    .opcao-errada-aluno {
+        background-color: #fce8e6; /* Vermelho mais forte para a linha errada do aluno */
+        border: 1px solid #fad2cf;
+    }
+    /* Bloco Inferior de Resposta Correta (Exclusivo para quando o aluno erra) */
+    .feedback-resposta-correta {
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #dadce0;
+        font-size: 14px;
+        color: #202124;
+    }
+    .feedback-resposta-correta strong {
+        color: #c5221f;
+        display: block;
+        margin-bottom: 5px;
+    }
+    .texto-gabarito-revelado {
+        display: flex;
+        align-items: center;
+        color: #137333;
+        font-weight: 500;
+        background: #ffffff;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #ceead6;
+        margin-top: 5px;
+    }
+</style>
 
-<h2>Questões Respondidas</h2>
+<h2 class="titulo-secao">Questões Respondidas</h2>
 
 <?php 
 $num = 1;
 
-// 1. Limpeza e decodificação padrão do JSON vindo do banco
+// 1. Limpeza e decodificação do JSON vindo do banco
 $json_bruto = $prova['respostas_aluno'] ?? '';
 if (is_array($json_bruto)) {
     $json_bruto = json_encode($json_bruto);
@@ -130,65 +127,72 @@ if (is_array($json_bruto)) {
 $json_limpo = stripslashes(trim($json_bruto, '"'));
 $dados_resposta = json_decode($json_limpo, true) ?: [];
 
-// 2. Extrai os dois arrays que acabamos de gravar com sucesso
 $sorteadas = $dados_resposta['questoes_sorteadas'] ?? [];
 $alternativas_aluno = $dados_resposta['alternativas_aluno'] ?? [];
 
-// 3. O Loop Inteligente pelas questões
+// 2. Loop pelas questões
 foreach ($todas_questoes as $q): 
     $uuid_questao = trim($q['id']);
 
-    // Filtro: Se não foi sorteada para este aluno, pula!
+    // Se a questão não fez parte do sorteio do aluno, ignora
     if (!in_array($uuid_questao, $sorteadas)) {
         continue;
     }
     
-    // 🔥 CAPTURA REAL: Busca qual alternativa o aluno marcou para ESTA questão específica
-    // Se ele não tiver marcado nada, assume -1 para não coincidir com a alternativa 0
+    // Captura o voto do aluno
     $resposta_marcada = isset($alternativas_aluno[$uuid_questao]) ? intval($alternativas_aluno[$uuid_questao]) : -1;
-    
     $gabarito = intval($q['resposta_correta']);
     $acertou = ($resposta_marcada === $gabarito);
     
     $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
+    
+    // Formata os pontos atuais da questão (Pronto para o futuro!)
+    $pontos_ganhos = $acertou ? number_format($valor_por_questao, 0) : '0';
+    $pontos_maximos = number_format($valor_por_questao, 0);
 ?>
     <div class="questao-box <?php echo $acertou ? 'correta' : 'errada'; ?>">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <strong>Questão <?php echo $num++; ?></strong>
-            <span class="status-badge <?php echo $acertou ? 'c' : 'e'; ?>">
-                <?php echo $acertou ? '🟢 Acertou' : '🔴 Errou'; ?>
-            </span>
+        
+        <div class="pontuacao-badge">
+            <strong><?php echo $pontos_ganhos; ?></strong> / <?php echo $pontos_maximos; ?> pontos
         </div>
-        <p style="margin: 0 0 15px 0; font-size: 16px;"><?php echo htmlspecialchars($q['enunciado']); ?></p>
+
+        <p class="enunciado-texto">
+            <strong><?php echo $num++; ?>. </strong>
+            <?php echo htmlspecialchars($q['enunciado']); ?>
+        </p>
 
         <?php if (is_array($opcoes)): ?>
             <?php foreach ($opcoes as $idx => $texto_opcao): 
                 $classe_opcao = '';
                 
-                // Se for a alternativa que o aluno marcou
+                // Se foi a alternativa que o aluno de fato marcou
                 if ($idx === $resposta_marcada) {
-                    $classe_opcao = $acertou ? 'opcao-correta-aluno' : 'opcao-errada-aluno';
-                }
-                // Se for o gabarito oficial (para mostrar onde era o certo mesmo se ele errou)
-                if ($idx === $gabarito) {
-                    $classe_opcao .= ' gabarito-oficial';
+                    $classe_opcao = $acertou ? 'opcao-correta-aluno opcao-marcada' : 'opcao-errada-aluno opcao-marcada';
                 }
             ?>
-                <div class="opcao <?php echo $classe_opcao; ?>" style="padding: 8px; margin: 4px 0; border-radius: 4px;">
-                    <?php 
-                    echo htmlspecialchars($texto_opcao); 
+                <div class="opcao-container <?php echo $classe_opcao; ?>">
+                    <span class="radio-simulado"></span>
+                    <span style="flex-grow: 1;"><?php echo htmlspecialchars($texto_opcao); ?></span>
                     
-                    // Tags de texto para ajudar na leitura
-                    if ($idx === $resposta_marcada) {
-                        echo " ──> 👤 Sua Resposta";
-                    }
-                    if ($idx === $gabarito) {
-                        echo " ✔ (Gabarito Oficial)";
-                    }
-                    ?>
+                    <?php if ($idx === $resposta_marcada): ?>
+                        <span style="font-size: 12px; margin-left: 10px; opacity: 0.8;">
+                            <?php echo $acertou ? '✔️ Resposta do aluno' : '❌ Resposta do aluno'; ?>
+                        </span>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
+
+        <?php if (!$acertou && isset($opcoes[$gabarito])): ?>
+            <div class="feedback-resposta-correta">
+                <strong>Resposta correta</strong>
+                <div class="texto-gabarito-revelado">
+                    <span class="radio-simulado" style="border-color: #137333; background: radial-gradient(circle, #137333 40%, transparent 50%);"></span>
+                    <?php echo htmlspecialchars($opcoes[$gabarito]); ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
     </div>
 <?php endforeach; ?>
 </div>
