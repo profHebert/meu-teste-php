@@ -4,15 +4,16 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // 🌟 O JUÍZO FINAL DA TELA BRANCA: Força o caminho correto a partir da raiz do servidor
-if (file_exists(__DIR__ . "/config.php")) {
-    include_once __DIR__ . "/config.php";
-} elseif (file_exists(__DIR__ . "/../config.php")) {
-    // Caso o login esteja dentro de uma pasta /api ou /admin
-    include_once __DIR__ . "/../config.php";
-} else {
-    die("Erro Crítico: O arquivo config.php não foi encontrado na raiz do projeto!");
-}
-
+// if (file_exists(__DIR__ . "/config.php")) {
+//     include_once __DIR__ . "/config.php";
+// } elseif (file_exists(__DIR__ . "/../config.php")) {
+//     // Caso o login esteja dentro de uma pasta /api ou /admin
+//     include_once __DIR__ . "/../config.php";
+// } else {
+//     die("Erro Crítico: O arquivo config.php não foi encontrado na raiz do projeto!");
+// }
+define('SUPABASE_URL', 'https://seu-subdominio.supabase.co');
+define('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.SuaChaveRealAqui...');
 $erro_login = '';
 // ... resto do seu código cURL ...
 
