@@ -1,14 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-echo "<h1>O index.php está funcionando!</h1>";
-exit;
-
-?>
-
-<?php
 // 🚨 FORÇA O PHP A EXIBIR ERROS NA TELA (MATA A TELA BRANCA)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
