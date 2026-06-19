@@ -1,4 +1,9 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (!isset($_SESSION['professor_logado']) || $_SESSION['professor_logado'] !== true) {
+    header("Location: ../index.php");
+    exit;
+}
 require_once "conexao.php";
 
 // 1. CAPTURA O FILTRO DA TURMA/PROVA SE O PROFESSOR SELECIONAR

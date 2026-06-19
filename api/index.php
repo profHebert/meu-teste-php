@@ -6,24 +6,35 @@
 require_once "conexao.php";
 require_once "gravar_historico.php";
 
+// ... suas requisições de conexão anteriores ...
+
 // 1. CAPTURA A PÁGINA SOLICITADA NA URL PARA O SWITCH ROTEADOR
 $request_uri = $_SERVER['REQUEST_URI'];
 $pagina_alvo = parse_url($request_uri, PHP_URL_PATH);
-$pagina_nome = basename($pagina_alvo); // Pega apenas o final (ex: dashboard.php)
+$pagina_nome = basename($pagina_alvo);
 
-// 2. O ROTEADOR CENTRALIZADO (SUGESTÃO DO PROFESSOR)
+// Roteador de arquivos ADM e scripts diretos
 switch ($pagina_nome) {
     case 'dashboard.php':
         include_once "dashboard.php";
         exit;
-
     case 'ver_prova':
     case 'ver_prova.php':
         include_once "ver_prova.php";
         exit;
-    
-    
+    case 'ambiente_professor.php':
+        include_once "ambiente_professor.php";
+        exit;
 }
+
+// 🔥 NOVO: SE ACESSAR APENAS O DOMÍNIO / INDEX SEM ROTAS DE ALUNO, VAI PARA O LOGIN
+$url_limpa = trim($pagina_alvo, '/');
+if (empty($url_limpa) || $url_limpa === 'index.php') {
+    include_once "admin_login.php";
+    exit;
+}
+
+// ... Resto do fluxo normal de geração de prova de alunos (fecap, uninove, etc) ...
 
 // =========================================================================
 // 3. SE NÃO FOR UMA PÁGINA ADM, SEGUE O FLUXO NORMAL DE GERAÇÃO DA PROVA

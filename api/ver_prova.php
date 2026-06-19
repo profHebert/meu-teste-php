@@ -1,4 +1,9 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (!isset($_SESSION['professor_logado']) || $_SESSION['professor_logado'] !== true) {
+    header("Location: ../index.php");
+    exit;
+}
 // api/ver_prova.php - VISUALIZADOR DE PROVA CORRIGIDA
 require_once "conexao.php";
 
