@@ -41,6 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
             $_SESSION['professor_nome']   = $professor['nome'];
             
             // header("Location: ambiente_professor.php");
+            echo"<h2>Senha ok</h2>";
+            
             exit;
         } else {
             $erro_login = "Senha incorreta.";
