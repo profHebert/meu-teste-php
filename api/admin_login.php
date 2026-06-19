@@ -3,6 +3,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+include_once "config.php"; // Puxa as chaves centrais
+
 $erro_login = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
@@ -10,14 +12,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     $senha_digitada   = $_POST['senha'] ?? '';
 
     // 1. Consulta o Supabase via cURL filtrando pelo usuário digitado
-    $url = "https://sua-url-do-supabase.supabase.co/rest/v1/professores?usuario=eq." . urlencode($usuario_digitado);
-    
+
+    $url = SUPABASE_URL . "/rest/v1/professores?usuario=eq." . urlencode($usuario_digitado);
+
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        "apikey: SEU_ANON_KEY",
-        "Authorization: Bearer SEU_ANON_KEY",
+        "apikey: " . SUPABASE_KEY,             // Usa a constante aqui
+        "Authorization: Bearer " . SUPABASE_KEY, // E aqui
         "Content-Type: application/json"
     ]);
     
