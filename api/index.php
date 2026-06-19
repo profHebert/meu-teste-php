@@ -1,7 +1,5 @@
 <?php
-// =========================================================================
-// api/index.php - CONTROLADOR CENTRAL COM ROTEAMENTO CENTRALIZADO (SWITCH)
-// =========================================================================
+// 🚨 FORÇA O PHP A EXIBIR ERROS NA TELA (MATA A TELA BRANCA)
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -9,35 +7,35 @@ error_reporting(E_ALL);
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require_once "conexao.php";
-require_once "gravar_historico.php";
 
-// ... suas requisições de conexão anteriores ...
-
-// 1. CAPTURA A PÁGINA SOLICITADA NA URL PARA O SWITCH ROTEADOR
+// 1. CAPTURA A URL SOLICITADA
 $request_uri = $_SERVER['REQUEST_URI'];
 $pagina_alvo = parse_url($request_uri, PHP_URL_PATH);
 $pagina_nome = basename($pagina_alvo);
 
-// Roteador de arquivos ADM e scripts diretos
+// 2. ROTEADOR DE ARQUIVOS ADM (Se o arquivo existir, inclui e mata a execução com exit)
 switch ($pagina_nome) {
     case 'dashboard.php':
-        include_once "dashboard.php";
+        if (file_exists("api/dashboard.php")) { include_once "api/dashboard.php"; } 
+        else { include_once "dashboard.php"; }
         exit;
-    case 'ver_prova':
+        
     case 'ver_prova.php':
-        include_once "ver_prova.php";
+    case 'ver_prova':
+        if (file_exists("api/ver_prova.php")) { include_once "api/ver_prova.php"; } 
+        else { include_once "ver_prova.php"; }
         exit;
+        
     case 'ambiente_professor.php':
         include_once "ambiente_professor.php";
         exit;
 }
 
-// 🔥 NOVO: SE ACESSAR APENAS O DOMÍNIO / INDEX SEM ROTAS DE ALUNO, VAI PARA O LOGIN
+// 3. SE ACESSAR APENAS O DOMÍNIO / INDEX SEM ROTAS DE ALUNO, ABRE O LOGIN
 $url_limpa = trim($pagina_alvo, '/');
 if (empty($url_limpa) || $url_limpa === 'index.php') {
     include_once "admin_login.php";
-    exit;
+    exit; // Garante que o PHP pare aqui e não execute o código de aluno abaixo
 }
 
 // ... Resto do fluxo normal de geração de prova de alunos (fecap, uninove, etc) ...
