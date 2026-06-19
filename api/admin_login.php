@@ -12,7 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // } else {
 //     die("Erro Crítico: O arquivo config.php não foi encontrado na raiz do projeto!");
 // }
-define('SUPABASE_URL', 'https://seu-subdominio.supabase.co');
+define('SUPABASE_URL', 'https://vxkxptbrfbqygpisggjm.supabase.co');
 define('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.SuaChaveRealAqui...');
 $erro_login = '';
 // ... resto do seu código cURL ...
