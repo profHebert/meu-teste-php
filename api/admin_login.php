@@ -31,9 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     curl_close($ch);
     
     $professores = json_decode($resposta, true) ?: [];
-    $senha_criptografada = password_hash("professor123", PASSWORD_BCRYPT);
-    echo "<h2>$senha_criptografada</h2>";
-    echo "<pre>";print_r($professores);echo "</pre>";
+    // $senha_criptografada = password_hash("professor123", PASSWORD_BCRYPT);
+    // echo "<h2>$senha_criptografada</h2>";
+    // echo "<pre>";print_r($professores);echo "</pre>";
 
     if (!empty($professores) && isset($professores[0])) {
         $professor = $professores[0];
@@ -42,8 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
             $_SESSION['professor_logado'] = true;
             $_SESSION['professor_nome']   = $professor['nome'];
             
-            // header("Location: ambiente_professor.php");
-            echo"<h2>Senha ok</h2>";
+            header("Location: ambiente_professor.php");
+            // echo"<h2>Senha ok</h2>";
 
             exit;
         } else {
