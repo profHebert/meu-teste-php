@@ -16,6 +16,8 @@ define('SUPABASE_URL', 'https://vxkxptbrfbqygpisggjm.supabase.co');
 define('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.SuaChaveRealAqui...');
 $erro_login = '';
 // ... resto do seu código cURL ...
+echo "<h2>admin ok";
+exit;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     $usuario_digitado = trim($_POST['usuario'] ?? '');
