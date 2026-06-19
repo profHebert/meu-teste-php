@@ -4,8 +4,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Suas definições diretas que funcionaram perfeitamente
-define('SUPABASE_URL', 'https://vxkxptbrfbqygpisggjm.supabase.co');
-define('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.SuaChaveRealAqui...');
+include_once "config.php";
+
 $erro_login = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
