@@ -4,8 +4,11 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Suas definições diretas que funcionaram perfeitamente
-include_once "config.php";
-
+// include_once "config.php";
+$supabase_url = "https://vxkxptbrfbqygpisggjm.supabase.co";
+$supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4a3hwdGJyZmJxeWdwaXNnZ2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzkxMjUsImV4cCI6MjA5NjYxNTEyNX0.dEW3a_-Tgr-ufM3LLtzx1cuX1G4rMC_uK8lsJruGYt0";
+define('SUPABASE_URL', $supabase_url);
+define('SUPABASE_KEY', $supabase_key);
 $erro_login = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
@@ -28,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     curl_close($ch);
     
     $professores = json_decode($resposta, true) ?: [];
+    echo "<pre>";print_r($professores);echo "</pre>";
 
     if (!empty($professores) && isset($professores[0])) {
         $professor = $professores[0];
@@ -36,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
             $_SESSION['professor_logado'] = true;
             $_SESSION['professor_nome']   = $professor['nome'];
             
-            header("Location: ambiente_professor.php");
+            // header("Location: ambiente_professor.php");
             exit;
         } else {
             $erro_login = "Senha incorreta.";
