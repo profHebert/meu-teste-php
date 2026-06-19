@@ -5,21 +5,42 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $erro_login = '';
 
-// Definição de credencial 
-$professor_usuario = "admin";
-$professor_senha   = "professor123"; // Escolha sua senha segura
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
-    $usuario = $_POST['usuario'] ?? '';
-    $senha   = $_POST['senha'] ?? '';
+    $usuario_digitado = $_POST['usuario'] ?? '';
+    $senha_digitada   = $_POST['senha'] ?? '';
 
-    if ($usuario === $professor_usuario && $senha === $professor_senha) {
-        $_SESSION['professor_logado'] = true;
-        header("Location: ambiente_professor.php");
-        exit;
-    } else {
-        $erro_login = "Usuário ou senha incorretos.";
+    // 1. Consulta o Supabase via cURL filtrando pelo usuário digitado
+    $url = "https://sua-url-do-supabase.supabase.co/rest/v1/professores?usuario=eq." . urlencode($usuario_digitado);
+    
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "apikey: SEU_ANON_KEY",
+        "Authorization: Bearer SEU_ANON_KEY",
+        "Content-Type: application/json"
+    ]);
+    
+    $resposta = curl_exec($ch);
+    curl_close($ch);
+    
+    $professores = json_decode($resposta, true) ?: [];
+
+    // 2. Se o usuário existir, verifica a senha usando hash seguro
+    if (!empty($professores) && isset($professores[0])) {
+        $professor = $professores[0];
+        
+        // Compara a senha digitada com o hash do banco (Supabase usa padrão compatível com password_verify)
+        if (password_verify($senha_digitada, $professor['senha_hash'])) {
+            $_SESSION['professor_logado'] = true;
+            $_SESSION['professor_nome']   = $professor['nome'];
+            header("Location: ambiente_professor.php");
+            exit;
+        }
     }
+    
+    // Se falhar em qualquer etapa, exibe erro genérico (boa prática de segurança)
+    $erro_login = "Usuário ou senha incorretos.";
 }
 ?>
 <!DOCTYPE html>
