@@ -3,10 +3,18 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 1. Puxa as chaves centrais do seu arquivo de configuração
-include_once "config.php"; 
+// 🌟 O JUÍZO FINAL DA TELA BRANCA: Força o caminho correto a partir da raiz do servidor
+if (file_exists(__DIR__ . "/config.php")) {
+    include_once __DIR__ . "/config.php";
+} elseif (file_exists(__DIR__ . "/../config.php")) {
+    // Caso o login esteja dentro de uma pasta /api ou /admin
+    include_once __DIR__ . "/../config.php";
+} else {
+    die("Erro Crítico: O arquivo config.php não foi encontrado na raiz do projeto!");
+}
 
 $erro_login = '';
+// ... resto do seu código cURL ...
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     $usuario_digitado = trim($_POST['usuario'] ?? '');
