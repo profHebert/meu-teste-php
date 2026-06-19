@@ -3,31 +3,18 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 🌟 O JUÍZO FINAL DA TELA BRANCA: Força o caminho correto a partir da raiz do servidor
-// if (file_exists(__DIR__ . "/config.php")) {
-//     include_once __DIR__ . "/config.php";
-// } elseif (file_exists(__DIR__ . "/../config.php")) {
-//     // Caso o login esteja dentro de uma pasta /api ou /admin
-//     include_once __DIR__ . "/../config.php";
-// } else {
-//     die("Erro Crítico: O arquivo config.php não foi encontrado na raiz do projeto!");
-// }
+// Suas definições diretas que funcionaram perfeitamente
 define('SUPABASE_URL', 'https://vxkxptbrfbqygpisggjm.supabase.co');
 define('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.SuaChaveRealAqui...');
 $erro_login = '';
-// ... resto do seu código cURL ...
-echo "<h2>admin ok!!<h2>";
-// exit;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     $usuario_digitado = trim($_POST['usuario'] ?? '');
     $senha_digitada   = $_POST['senha'] ?? '';
 
-    // 2. Garante que a URL vinda do config não termine com barra para não quebrar o caminho
     $url_base = rtrim(SUPABASE_URL, '/');
     $url = $url_base . "/rest/v1/professores?usuario=eq." . urlencode($usuario_digitado);
     
-    // 3. Configura o cURL injetando as constantes centralizadas
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
@@ -45,7 +32,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     if (!empty($professores) && isset($professores[0])) {
         $professor = $professores[0];
         
-        // Testa a senha contra o hash seguro do banco
         if (password_verify($senha_digitada, $professor['senha_hash'])) {
             $_SESSION['professor_logado'] = true;
             $_SESSION['professor_nome']   = $professor['nome'];
@@ -60,3 +46,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     }
 }
 ?>
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Área do Docente - Login</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0ebf8; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; border-top: 8px solid #673ab7; }
+        h2 { margin-top: 0; color: #202124; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #5f6368; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #673ab7; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; }
+        button:hover { background-color: #512da8; }
+        .erro { color: #c5221f; background-color: #fce8e6; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <h2>Acesso do Professor</h2>
+    
+    <?php if (!empty($erro_login)): ?>
+        <div class="erro"><?php echo htmlspecialchars($erro_login); ?></div>
+    <?php endif; ?>
+
+    <form method="POST" action="">
+        <div class="input-group">
+            <label for="usuario">Usuário</label>
+            <input type="text" id="usuario" name="usuario" required autocomplete="off">
+        </div>
+        
+        <div class="input-group">
+            <label for="senha">Senha</label>
+            <input type="password" id="senha" name="senha" required>
+        </div>
+        
+        <button type="submit" name="acao_login">Entrar</button>
+    </form>
+</div>
+
+</body>
+</html>
