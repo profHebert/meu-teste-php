@@ -76,6 +76,10 @@ if (isset($_GET['logout'])) {
                 <span>📚</span> Cadastrar e Alterar Disciplinas
             </a>
 
+            <a href="questao_gestao" class="link-menu">
+                <span>📝</span> Banco de Questões (Cadastrar e Alterar)
+            </a>
+            
             <a href="criar_turma.php" class="link-menu" style="opacity: 0.7;">
                 <span>👥</span> Cadastrar Novas Turmas e Alunos
             </a>

@@ -27,13 +27,19 @@ switch ($pagina_nome) {
         exit;
         
     case 'ambiente_professor.php':
+    case 'ambiente_professor':        
         include_once "ambiente_professor.php";
         exit;
     
     case 'disciplina_gestao.php':
+    case 'disciplina_gestao':
         include_once "disciplina_gestao.php";
         exit;    
 
+    case 'questao_gestao.php':
+    case 'questao_gestao':
+        include_once "questao_gestao.php";
+        exit; 
         
 }
 
