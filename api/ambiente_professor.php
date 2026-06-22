@@ -72,6 +72,10 @@ if (isset($_GET['logout'])) {
                 <span>📊</span> Acessar Dashboard de Resultados
             </a>
 
+            <a href="disciplina_gestao.php" class="link-menu">
+                <span>📚</span> Cadastrar e Alterar Disciplinas
+            </a>
+
             <a href="criar_turma.php" class="link-menu" style="opacity: 0.7;">
                 <span>👥</span> Cadastrar Novas Turmas e Alunos
             </a>
