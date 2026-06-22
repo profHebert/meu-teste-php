@@ -16,7 +16,6 @@ $url_base = rtrim(SUPABASE_URL, '/');
 $erro = '';
 $sucesso = '';
 
-// Variáveis do Formulário de Cadastro/Edição
 $id_form = '';
 $enunciado_form = '';
 $imagem_url_form = '';
@@ -25,10 +24,6 @@ $disciplina_form = '';
 $resposta_correta_form = 0;
 $opcoes_form = ["", "", "", "", ""];
 $modo_edicao = false;
-
-// 🌟 CAPTURA DOS FILTROS DA LISTAGEM (GET)
-$filtro_disciplina = $_GET['filtro_disciplina'] ?? '';
-$filtro_aula       = $_GET['filtro_aula'] ?? 'todas';
 
 // =========================================================================
 // GATILHO DE EDIÇÃO (GET)
@@ -47,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['editar_id']) && !empty(
     if (!empty($dados_questao)) {
         $id_form               = $dados_questao[0]['id'];
         $enunciado_form        = $dados_questao[0]['enunciado'];
+        // 🌟 CORREÇÃO DO ERRO: Garante que se for null, vira uma string vazia ''
         $imagem_url_form       = $dados_questao[0]['imagem_url'] ?? ''; 
         $numero_aula_form      = $dados_questao[0]['numero_aula'];
         $disciplina_form       = $dados_questao[0]['disciplina'];
@@ -70,25 +66,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_questao'])) {
     $disciplina       = $_POST['disciplina'] ?? null;
     $resposta_correta = (int)($_POST['resposta_correta'] ?? 0);
     $opcoes           = $_POST['opcoes'] ?? ["", "", "", "", ""];
-    
-    $remover_imagem   = isset($_POST['remover_imagem_atual']) && $_POST['remover_imagem_atual'] === '1';
-    $imagem_url       = $remover_imagem ? null : ($_POST['imagem_url_atual'] ?? null); 
-    
+    $imagem_url       = $_POST['imagem_url_atual'] ?? null; 
     $is_update        = $_POST['is_update'] === '1';
     $id_questao       = $_POST['id_questao'] ?? '';
 
-    // Upload de Imagem para o Storage
+    // 📸 TRATAMENTO DE UPLOAD DE IMAGEM PARA O STORAGE DO SUPABASE
     if (isset($_FILES['foto_questao']) && $_FILES['foto_questao']['error'] === UPLOAD_ERR_OK) {
         $file_tmp  = $_FILES['foto_questao']['tmp_name'];
         $file_name = $_FILES['foto_questao']['name'];
         $file_ext  = pathinfo($file_name, PATHINFO_EXTENSION);
         
+        // Cria um nome único para o arquivo não sobrescrever outros
         $novo_nome_arquivo = uniqid("img_", true) . "." . $file_ext;
+        
+        // URL de Upload do Storage do Supabase
         $url_upload = $url_base . "/storage/v1/object/questoes_imagens/" . $novo_nome_arquivo;
         
-        $file_data   = file_get_contents($file_tmp);
-        $mime_type   = mime_content_type($file_tmp);
-        $file_size   = filesize($file_tmp);
+        $file_data = file_get_contents($file_tmp);
+        $mime_type = mime_content_type($file_tmp);
 
         $ch = curl_init($url_upload);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
@@ -97,20 +92,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_questao'])) {
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             "apikey: " . SUPABASE_KEY,
             "Authorization: Bearer " . SUPABASE_KEY,
-            "Content-Type: " . $mime_type,
-            "Content-Length: " . $file_size
+            "Content-Type: " . $mime_type
         ]);
         
         $res_upload = curl_exec($ch);
         $http_upload_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($http_upload_code == 200 || $http_upload_code == 201) {
+        if ($http_upload_code == 200) {
+            // Monta a URL pública definitiva da imagem hospedada no Supabase
             $imagem_url = $url_base . "/storage/v1/object/public/questoes_imagens/" . $novo_nome_arquivo;
         } else {
-            $resposta_json = json_decode($res_upload, true);
-            $msg_supabase = $resposta_json['message'] ?? $res_upload;
-            $erro = "A imagem falhou ao subir para o Storage. Erro: " . $msg_supabase;
+            $erro = "A imagem falhou ao subir para o Storage. Código: " . $http_upload_code;
         }
     }
 
@@ -143,15 +136,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['salvar_questao'])) {
 
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ["apikey: " . SUPABASE_KEY, "Authorization: Bearer " . SUPABASE_KEY, "Content-Type: application/json"]);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            "apikey: " . SUPABASE_KEY,
+            "Authorization: Bearer " . SUPABASE_KEY,
+            "Content-Type: application/json"
+        ]);
         
         $resposta = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if (in_array($http_code, [200, 201, 204])) {
-            // Mantém os filtros ativos na URL após salvar para não perder a paginação visual
-            header("Location: questao_gestao.php?sucesso=1&filtro_disciplina=" . urlencode($filtro_disciplina) . "&filtro_aula=" . urlencode($filtro_aula));
+            header("Location: questao_gestao.php?sucesso=1");
             exit;
         } else {
             $erro = "Falha ao gravar no banco. Código: " . $http_code;
@@ -163,36 +159,19 @@ if (isset($_GET['sucesso'])) {
     $sucesso = "Questão salva com sucesso!";
 }
 
-// =========================================================================
-// CARREGAMENTO DOS DADOS EXTERNOS (DISCIPLINAS E QUESTÕES FILTRADAS)
-// =========================================================================
-
-// 1. Busca todas as disciplinas para os <select>
+// BUSCA DE DISCIPLINAS
 $ch = curl_init($url_base . "/rest/v1/disciplinas?select=sigla,nome&order=sigla.asc");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ["apikey: " . SUPABASE_KEY, "Authorization: Bearer " . SUPABASE_KEY]);
 $disciplinas = json_decode(curl_exec($ch), true) ?: [];
 curl_close($ch);
 
-// 2. Monta a URL de listagem de questões aplicando os filtros inteligentes
-$url_questoes = $url_base . "/rest/v1/questoes?select=*";
-
-if (!empty($filtro_disciplina)) {
-    $url_questoes .= "&disciplina=eq." . urlencode($filtro_disciplina);
-}
-if ($filtro_aula !== 'todas' && $filtro_aula !== '') {
-    $url_questoes .= "&numero_aula=eq." . (int)$filtro_aula;
-}
-// Ordena pelas mais antigas ou por ordem de criação para organizar o indexador (1/30, 2/30...)
-$url_questoes .= "&order=numero_aula.asc,created_at.asc";
-
-$ch = curl_init($url_questoes);
+// BUSCA QUESTÕES
+$ch = curl_init($url_base . "/rest/v1/questoes?select=*&order=created_at.desc");
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, ["apikey: " . SUPABASE_KEY, "Authorization: Bearer " . SUPABASE_KEY]);
-$questoes_filtradas = json_decode(curl_exec($ch), true) ?: [];
+$questoes = json_decode(curl_exec($ch), true) ?: [];
 curl_close($ch);
-
-$total_questoes_no_filtro = count($questoes_filtradas);
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -205,11 +184,11 @@ $total_questoes_no_filtro = count($questoes_filtradas);
         .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); width: 100%; max-width: 850px; border-top: 8px solid #005088; margin-bottom: 25px; box-sizing: border-box; }
         h2, h3 { color: #005088; margin-top: 0; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .grid-3 { display: grid; grid-template-columns: 2fr 1fr auto; gap: 15px; align-items: flex-end; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 6px; color: #4a5568; font-weight: bold; font-size: 14px; }
         input[type="text"], input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
         
+        /* Ajuste do Editor Quill */
         #editor-container { height: 150px; background: white; border-radius: 0 0 4px 4px; }
         .ql-toolbar { border-radius: 4px 4px 0 0; background: #edf2f7; }
 
@@ -218,17 +197,12 @@ $total_questoes_no_filtro = count($questoes_filtradas);
         .btn-salvar { background-color: #005088; color: white; border: none; padding: 12px 25px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 15px; }
         .btn-salvar:hover { background-color: #003a63; }
         .btn-cancelar { background-color: #e2e8f0; color: #4a5568; text-decoration: none; padding: 12px 25px; border-radius: 4px; font-size: 15px; font-weight: bold; display: inline-block; margin-left: 10px; }
-        .btn-filtrar { background-color: #11caa0; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; height: 41px; }
-        .btn-filtrar:hover { background-color: #0da784; }
-
         .alert { padding: 12px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; }
         .error { color: #c5221f; background-color: #fce8e6; border: 1px solid #f2b8b5; }
         .success { color: #137333; background-color: #e6f4ea; border: 1px solid #b7e1cd; }
-        
         .q-card { background: #fff; border: 1px solid #e2e8f0; border-left: 5px solid #11caa0; border-radius: 6px; padding: 15px; margin-bottom: 15px; }
         .q-card-header { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; color: #718096; font-weight: bold; }
         .q-badge { background: #e2e8f0; padding: 2px 8px; border-radius: 12px; }
-        .q-counter { background: #005088; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
         .q-body { font-size: 15px; color: #2d3748; margin-bottom: 15px; line-height: 1.5; }
         .btn-edit-item { background: #11caa0; color: white; text-decoration: none; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: bold; display: inline-block; }
         .img-preview { max-width: 180px; border-radius: 4px; display: block; margin-top: 8px; border: 1px solid #cbd5e1; }
@@ -274,20 +248,13 @@ $total_questoes_no_filtro = count($questoes_filtradas);
             <div id="editor-container"></div>
         </div>
 
-        <div class="input-group" style="background: #f8f9fa; padding: 15px; border-radius: 6px; border: 1px solid #cbd5e1; margin-top: 20px;">
-            <label for="foto_questao" style="color: #005088;">📸 Adicionar ou Substituir Imagem Ilustrativa:</label>
+        <div class="input-group">
+            <label for="foto_questao">Selecione uma Imagem Ilustrativa (Upload Direto para o Supabase):</label>
             <input type="file" id="foto_questao" name="foto_questao" accept="image/*">
             
             <?php if(!empty($imagem_url_form)): ?>
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1;">
-                    <p style="font-size:13px; margin:0 0 8px 0; font-weight:bold; color:#4a5568;">Imagem ativa na questão:</p>
-                    <img src="<?= htmlspecialchars($imagem_url_form) ?>" class="img-preview" alt="Preview">
-                    
-                    <label style="display: flex; align-items: center; gap: 8px; color: #c5221f; font-weight: bold; cursor: pointer; margin-top: 8px; font-size: 13px;">
-                        <input type="checkbox" name="remover_imagem_atual" value="1" style="width:16px; height:16px; cursor:pointer;">
-                        🗑️ Marque aqui para EXCLUIR e retirar a imagem desta questão definitivamente
-                    </label>
-                </div>
+                <p style="font-size:12px;margin:10px 0 2px 0; font-weight:bold; color:#4a5568;">Imagem atualmente ativa nesta questão:</p>
+                <img src="<?= htmlspecialchars($imagem_url_form) ?>" class="img-preview" alt="Preview da questão">
             <?php endif; ?>
         </div>
 
@@ -306,53 +273,20 @@ $total_questoes_no_filtro = count($questoes_filtradas);
         </button>
 
         <?php if($modo_edicao): ?>
-            <a href="questao_gestao.php?filtro_disciplina=<?= urlencode($filtro_disciplina) ?>&filtro_aula=<?= urlencode($filtro_aula) ?>" class="btn-cancelar">Cancelar Edição</a>
+            <a href="questao_gestao.php" class="btn-cancelar">Cancelar Edição</a>
         <?php endif; ?>
     </form>
 </div>
 
 <div class="container" style="border-top: 8px solid #11caa0;">
-    <h3>🔍 Filtrar Banco de Questões</h3>
-    <form method="GET" action="" class="grid-3">
-        <div class="input-group" style="margin:0;">
-            <label for="filtro_disciplina">Filtrar por Disciplina:</label>
-            <select id="filtro_disciplina" name="filtro_disciplina">
-                <option value="">-- Ver Todas as Disciplinas --</option>
-                <?php foreach($disciplinas as $d): ?>
-                    <option value="<?= htmlspecialchars($d['sigla']) ?>" <?= ($filtro_disciplina === $d['sigla']) ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($d['sigla']) ?> - <?= htmlspecialchars($d['nome']) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
-        <div class="input-group" style="margin:0;">
-            <label for="filtro_aula">Filtrar por Aula:</label>
-            <select id="filtro_aula" name="filtro_aula">
-                <option value="todas" <?= ($filtro_aula === 'todas') ? 'selected' : '' ?>>Todas as Aulas</option>
-                <?php for($a = 1; $a <= 30; $a++): ?>
-                    <option value="<?= $a ?>" <?= ($filtro_aula == $a) ? 'selected' : '' ?>>Aula <?= $a ?></option>
-                <?php endfor; ?>
-            </select>
-        </div>
-
-        <button type="submit" class="btn-filtrar">🔎 Aplicar Filtro</button>
-    </form>
-</div>
-
-<div class="container" style="border-top: 8px solid #11caa0;">
-    <h3>📚 Questões Encontradas (<?= $total_questoes_no_filtro ?>)</h3>
-    <?php if(empty($questoes_filtradas)): ?>
-        <p style="text-align:center; color:#a0aec0; margin: 20px 0;">Nenhuma questão atende aos filtros selecionados acima.</p>
+    <h3>📚 Banco de Questões Cadastradas</h3>
+    <?php if(empty($questoes)): ?>
+        <p style="text-align:center; color:#a0aec0;">Nenhuma questão cadastrada ainda.</p>
     <?php else: ?>
-        <?php 
-        $contador_atual = 1; // 🌟 Inicia o indexador numérico sequencial
-        foreach($questoes_filtradas as $q): 
-        ?>
+        <?php foreach($questoes as $q): ?>
             <div class="q-card">
                 <div class="q-card-header">
                     <div>
-                        <span class="q-counter"><?= $contador_atual . '/' . $total_questoes_no_filtro ?></span>
                         <span class="q-badge" style="background:#005088; color:white;"><?= htmlspecialchars($q['disciplina']) ?></span>
                         <span class="q-badge">Aula: <?= htmlspecialchars($q['numero_aula']) ?></span>
                     </div>
@@ -365,27 +299,27 @@ $total_questoes_no_filtro = count($questoes_filtradas);
                     <?php endif; ?>
                 </div>
                 <div style="text-align: right;">
-                    <a href="?editar_id=<?= $q['id'] ?>&filtro_disciplina=<?= urlencode($filtro_disciplina) ?>&filtro_aula=<?= urlencode($filtro_aula) ?>" class="btn-edit-item">✏️ Editar Questão</a>
+                    <a href="?editar_id=<?= $q['id'] ?>" class="btn-edit-item">✏️ Editar Questão</a>
                 </div>
             </div>
-        <?php 
-        $contador_atual++;
-        endforeach; 
-        ?>
+        <?php endforeach; ?>
     <?php endif; ?>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
 <script>
+    // Inicializa o editor visual apenas com o botão de Negrito (pode adicionar 'italic', 'underline' se quiser)
     var quill = new Quill('#editor-container', {
         modules: { toolbar: [['bold']] },
         theme: 'snow'
     });
 
+    // Se estiver editando, coloca o texto vindo do banco dentro do editor visual de forma automática
     <?php if(!empty($enunciado_form)): ?>
         quill.clipboard.dangerouslyPasteHTML(0, `<?= $enunciado_form ?>`);
     <?php endif; ?>
 
+    // Função executada no clique do botão enviar: copia o HTML do editor para o input hidden antes do POST
     function prepararEnvio() {
         var htmlDoEditor = quill.getSemanticHTML();
         document.getElementById('enunciado_hidden').value = htmlDoEditor;
