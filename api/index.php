@@ -29,6 +29,12 @@ switch ($pagina_nome) {
     case 'ambiente_professor.php':
         include_once "ambiente_professor.php";
         exit;
+    
+    case 'disciplina_gestao.php':
+        include_once "disciplina_gestao.php";
+        exit;    
+
+        
 }
 
 // 3. SE ACESSAR APENAS O DOMÍNIO / INDEX SEM ROTAS DE ALUNO, ABRE O LOGIN
