@@ -7,7 +7,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // 1. CONFIGURAÇÕES DO COFRE DO SUPABASE (Traga suas chaves aqui)
 // define('SUPABASE_URL', 'https://vxkxptbrfbqygpisggjm.supabase.co');
 // define('SUPABASE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.SuaChaveRealAqui...'); 
-require_once __DIR__ . "/config.php";
+require_once  "config.php";
 //include_once "config.php";
 
 $url_base = rtrim(SUPABASE_URL, '/');
