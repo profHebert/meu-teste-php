@@ -12,6 +12,11 @@ if (file_exists(__DIR__ . "/config.php")) {
     die("Erro Crítico: O arquivo config.php não foi encontrado!");
 }
 
+if (!isset($_SESSION['professor_logado']) || $_SESSION['professor_logado'] !== true) {
+    header("Location: admin_login.php");
+    exit;
+}
+
 $url_base = rtrim(SUPABASE_URL, '/');
 $erro = '';
 $sucesso = '';
@@ -199,6 +204,7 @@ $total_questoes_no_filtro = count($questoes_filtradas);
 <head>
     <meta charset="UTF-8">
     <title>Gestão de Questões</title>
+    <?php include_once "theme.php"; ?>
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 30px; display: flex; flex-direction: column; align-items: center; }
@@ -235,6 +241,8 @@ $total_questoes_no_filtro = count($questoes_filtradas);
     </style>
 </head>
 <body>
+
+<?php include_once "professor_menu.php"; ?>
 
 <div class="container">
     <h2>📝 Central de Gestão de Questões</h2>

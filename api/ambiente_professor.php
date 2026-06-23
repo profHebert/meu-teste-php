@@ -21,6 +21,7 @@ if (isset($_GET['logout'])) {
 <head>
     <meta charset="UTF-8">
     <title>Ambiente do Professor</title>
+    <?php include_once "theme.php"; ?>
     <link rel="stylesheet" href="css/global.css">
     <style>
         .menu-professor {
@@ -66,29 +67,7 @@ if (isset($_GET['logout'])) {
         <h2>Portal do Professor 🏫</h2>
         <p class="subtitulo">Gerenciamento e Configuração de Avaliações</p>
 
-        <div class="menu-professor">
-            
-            <a href="api/dashboard.php" class="link-menu">
-                <span>📊</span> Acessar Dashboard de Resultados
-            </a>
-
-            <a href="disciplina_gestao.php" class="link-menu">
-                <span>📚</span> Cadastrar e Alterar Disciplinas
-            </a>
-
-            <a href="questao_gestao" class="link-menu">
-                <span>📝</span> Banco de Questões (Cadastrar e Alterar)
-            </a>
-            
-            <a href="criar_turma.php" class="link-menu" style="opacity: 0.7;">
-                <span>👥</span> Cadastrar Novas Turmas e Alunos
-            </a>
-
-            <a href="configurar_provas.php" class="link-menu" style="opacity: 0.7;">
-                <span>⚙️</span> Criar e Configurar Nova Prova
-            </a>
-
-        </div>
+        <?php include_once "professor_menu.php"; ?>
 
         <form action="" method="GET">
             <button type="submit" name="logout" value="1" class="btn-logout">Sair do sistema</button>

@@ -1,19 +1,29 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (file_exists(__DIR__ . "/config.php")) {
+    require_once __DIR__ . "/config.php";
+} elseif (file_exists(__DIR__ . "/../config.php")) {
+    require_once __DIR__ . "/../config.php";
+} else {
+    die("Erro Crítico: O arquivo config.php não foi encontrado!");
+}
+
 // =========================================================================
 // api/index.php - CONTROLADOR CENTRAL DA AVALIAÇÃO (VERSÃO POST DEFINITIVO)
 // =========================================================================
 
 // 0. DESVIO DE ROTA: SE FOR O DASHBOARD, CARREGA IMEDIATAMENTE
 if (strpos($_SERVER['REQUEST_URI'], 'dashboard.php') !== false) {
-    require_once "conexao.php";
-    include_once "dashboard.php";
+    require_once __DIR__ . "/conexao.php";
+    include_once __DIR__ . "/dashboard.php";
     exit;
 }
 
-require_once "conexao.php";
-require_once "gravar_historico.php";
-
-session_start();
+require_once __DIR__ . "/conexao.php";
+require_once __DIR__ . "/gravar_historico.php";
 
 // 1. CAPTURA DOS PARÂMETROS DA URL
 $request_uri = $_SERVER['REQUEST_URI'];
@@ -151,6 +161,7 @@ function clean_input($data) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Avaliação Online - UNINOVE</title>
+    <?php include_once "theme.php"; ?>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0d2347; color: #fff; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
         .container { background-color: #1a365d; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); width: 100%; max-width: 650px; border: 1px solid #2b4c7e; }

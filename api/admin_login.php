@@ -3,9 +3,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Suas definições diretas que funcionaram perfeitamente
-include_once "config.php";
-// $supabase_url = "https://vxkxptbrfbqygpisggjm.supabase.co";
+if (file_exists(__DIR__ . "/config.php")) {
+    require_once __DIR__ . "/config.php";
+} elseif (file_exists(__DIR__ . "/../config.php")) {
+    require_once __DIR__ . "/../config.php";
+} else {
+    die("Erro Crítico: O arquivo config.php não foi encontrado!");
+}
 // $supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4a3hwdGJyZmJxeWdwaXNnZ2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzkxMjUsImV4cCI6MjA5NjYxNTEyNX0.dEW3a_-Tgr-ufM3LLtzx1cuX1G4rMC_uK8lsJruGYt0";
 // define('SUPABASE_URL', $supabase_url);
 // define('SUPABASE_KEY', $supabase_key);
@@ -59,23 +63,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
 <head>
     <meta charset="UTF-8">
     <title>Área do Docente - Login</title>
+    <?php include_once "theme.php"; ?>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f0ebf8; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; border-top: 8px solid #673ab7; }
-        h2 { margin-top: 0; color: #202124; }
-        .input-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; color: #5f6368; font-weight: bold; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #673ab7; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; }
-        button:hover { background-color: #512da8; }
-        .erro { color: #c5221f; background-color: #fce8e6; padding: 10px; border-radius: 4px; margin-bottom: 20px; font-size: 14px; }
+        body { font-family: Arial, sans-serif; background: var(--bg); display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: var(--surface); padding: 36px; border-radius: 12px; box-shadow: 0 20px 50px rgba(15,23,42,0.08); width: 100%; max-width: 420px; border: 1px solid var(--border); }
+        h2 { margin-top: 0; color: var(--text); }
+        .input-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; color: var(--muted); font-weight: 600; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; border: 1px solid #dbe6f8; border-radius: 8px; box-sizing: border-box; background: var(--surface-alt); color: var(--text); }
+        .btn-primary { background-color: var(--accent); color: white; border: none; padding: 12px 18px; border-radius: 10px; cursor: pointer; width: 100%; font-size: 16px; font-weight: 700; }
+        .btn-primary:hover { opacity: 0.95; }
+        .erro { color: #b91c1c; background-color: #fee2e2; padding: 12px; border-radius: 8px; margin-bottom: 18px; font-size: 14px; }
     </style>
 </head>
 <body>
 
 <div class="login-card">
     <h2>Acesso do Professor</h2>
-    
     <?php if (!empty($erro_login)): ?>
         <div class="erro"><?php echo htmlspecialchars($erro_login); ?></div>
     <?php endif; ?>
@@ -85,13 +89,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
             <label for="usuario">Usuário</label>
             <input type="text" id="usuario" name="usuario" required autocomplete="off">
         </div>
-        
         <div class="input-group">
             <label for="senha">Senha</label>
             <input type="password" id="senha" name="senha" required>
         </div>
-        
-        <button type="submit" name="acao_login">Entrar</button>
+        <button type="submit" name="acao_login" class="btn-primary">Entrar</button>
     </form>
 </div>
 

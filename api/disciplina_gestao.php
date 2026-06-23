@@ -127,28 +127,74 @@ if ($http_code_lista !== 200) {
 <head>
     <meta charset="UTF-8">
     <title>Gestão de Disciplinas</title>
+    <?php include_once "theme.php"; ?>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f0ebf8; margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 700px; border-top: 8px solid #673ab7; margin-bottom: 20px; box-sizing: border-box; }
-        h2, h3 { color: #202124; margin-top: 0; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #5f6368; font-weight: bold; font-size: 14px; }
-        input[type="text"], select { width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
-        .btn { background-color: #673ab7; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px; }
-        .btn:hover { background-color: #512da8; }
-        .btn-secondary { background-color: #f1f3f4; color: #3c4043; border: 1px solid #dadce0; margin-left: 10px; text-decoration: none; padding: 10px 20px; border-radius: 4px; font-size: 14px; font-weight: bold; display: inline-block; }
-        .alert { padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; }
-        .error { color: #c5221f; background-color: #fce8e6; border: 1px solid #f2b8b5; }
-        .success { color: #137333; background-color: #e6f4ea; border: 1px solid #b7e1cd; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #dadce0; }
-        th { background-color: #f8f9fa; color: #5f6368; }
+        body { font-family: Arial, sans-serif; background-color: var(--bg, #eef2f7); color: var(--text, #202124); margin: 0; padding: 20px; }
+        .page-wrapper { max-width: 1300px; margin: 0 auto; }
+        .top-links { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; justify-content: center; }
+        .top-links a { display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border-radius: 999px; background: var(--surface, #ffffff); color: var(--text, #202124); text-decoration: none; border: 1px solid var(--border, #dce7f8); box-shadow: 0 12px 30px rgba(15,23,42,0.06); transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease; }
+        .top-links a:hover { transform: translateY(-2px); background: var(--surface-alt, #f8faff); border-color: var(--accent, #475be8); }
+        .top-links a.active { background: var(--accent, #475be8); color: white; border-color: transparent; }
+        .dashboard-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 20px; background: var(--surface, #ffffff); border: 1px solid var(--border, #dce7f8); border-radius: 20px; padding: 28px 30px; box-shadow: var(--shadow, 0 20px 50px rgba(71,91,232,0.12)); margin-bottom: 24px; }
+        .header-info h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: -0.03em; }
+        .header-info p { max-width: 720px; line-height: 1.6; color: var(--muted, #64748b); margin: 0; }
+        .header-stats { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+        .header-chip { background: var(--surface-alt, #eef2ff); color: var(--text, #202124); padding: 12px 16px; border-radius: 14px; border: 1px solid var(--border, #dce7f8); font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+        .section-grid { display: grid; grid-template-columns: 1.28fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .container { background: var(--surface, #ffffff); padding: 28px; border-radius: 22px; box-shadow: var(--shadow, 0 20px 50px rgba(71,91,232,0.12)); border: 1px solid var(--border, #dce7f8); }
+        .container h2, .container h3 { color: var(--text, #202124); margin-top: 0; }
+        .input-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; color: #475569; font-weight: 600; font-size: 14px; }
+        input[type="text"], select { width: 100%; padding: 14px 16px; border: 1px solid #d3dce6; border-radius: 14px; box-sizing: border-box; font-size: 15px; background: var(--surface-alt, #f8fbff); color: var(--text, #202124); }
+        .btn { background-color: var(--accent, #475be8); color: white; border: none; padding: 13px 22px; border-radius: 14px; cursor: pointer; font-weight: 700; font-size: 15px; box-shadow: 0 16px 36px rgba(71,91,232,0.12); }
+        .btn:hover { background-color: #3448c2; }
+        .btn-secondary { background-color: #f8fafc; color: #475569; border: 1px solid #d3dce6; text-decoration: none; padding: 12px 22px; border-radius: 14px; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+        .alert { padding: 14px 16px; border-radius: 14px; margin-bottom: 20px; font-size: 14px; line-height: 1.5; }
+        .error { color: #b91c1c; background-color: #fee2e2; border: 1px solid #fecaca; }
+        .success { color: #166534; background-color: #dcfce7; border: 1px solid #bbf7d0; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; min-width: 520px; }
+        th, td { padding: 16px 18px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f8fafc; color: #64748b; font-size: 14px; text-transform: uppercase; letter-spacing: 0.02em; }
+        tr:hover td { background: #f8fbff; }
+        .status-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: #eef2ff; color: #1d4ed8; font-weight: 700; font-size: 13px; }
+        @media (max-width: 1024px) {
+            .section-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .top-links { justify-content: center; }
+            .dashboard-header { padding: 22px; }
+            .header-info h1 { font-size: 26px; }
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>📚 Gestão de Disciplinas</h2>
+<div class="page-wrapper">
+    <div class="top-links">
+        <a href="ambiente_professor.php"><span>🏠</span> Início</a>
+        <a href="admin_dashboard.php"><span>📋</span> Painel Administrativo</a>
+        <a href="dashboard.php"><span>📊</span> Relatórios</a>
+        <a href="disciplina_gestao.php" class="active"><span>📚</span> Disciplinas</a>
+        <a href="questao_gestao.php"><span>📝</span> Questões</a>
+        <a href="criar_turma.php"><span>👥</span> Turmas</a>
+        <a href="cadastro_professor.php"><span>👤</span> Professores</a>
+    </div>
+
+    <div class="dashboard-header">
+        <div class="header-info">
+            <h1>Gestão de Disciplinas</h1>
+            <p>Organize todas as disciplinas do sistema em um painel que une cadastro, edição e visualização dos cursos ativos.</p>
+        </div>
+        <div class="header-stats">
+            <span class="header-chip">Total de Disciplinas: <?= count($disciplinas) ?></span>
+            <span class="header-chip">Atualizado em: <?= date('d/m/Y') ?></span>
+        </div>
+    </div>
+
+    <div class="section-grid">
+        <div class="container">
+            <h2>📚 Gestão de Disciplinas</h2>
     
     <?php if(!empty($erro)): ?> <div class="alert error"><?= $erro ?></div> <?php endif; ?>
     <?php if(!empty($sucesso)): ?> <div class="alert success"><?= $sucesso ?></div> <?php endif; ?>
@@ -193,10 +239,10 @@ if ($http_code_lista !== 200) {
             <a href="disciplina_gestao.php" class="btn-secondary">Cancelar Edição</a>
         <?php endif; ?>
     </form>
-</div>
+    </div>
 
-<div class="container">
-    <h3>📋 Disciplinas Ativas no Banco</h3>
+        <div class="container">
+            <h3>📋 Disciplinas Ativas no Banco</h3>
     <table>
         <thead>
             <tr>

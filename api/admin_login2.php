@@ -3,17 +3,19 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (file_exists(__DIR__ . "/config.php")) {
+    require_once __DIR__ . "/config.php";
+} elseif (file_exists(__DIR__ . "/../config.php")) {
+    require_once __DIR__ . "/../config.php";
+} else {
+    die("Erro Crítico: O arquivo config.php não foi encontrado!");
+}
+
 $erro_login = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     $usuario_digitado = $_POST['usuario'] ?? '';
     $senha_digitada   = $_POST['senha'] ?? '';
-
-    // INCLUA O SEU ARQUIVO DE CONFIGURAÇÃO AQUI (ou cole as variáveis direto)
-    // Exemplo se usar variáveis direto para testar:
-    // $supabase_url = "https://sua-url-do-supabase.supabase.co"; 
-    // $supabase_key = "SUA_ANON_KEY_REAL_AQUI";
-    include_once "config.php"; // Puxa as chaves centrais
 
     // Garante que a URL não termine com barra para não quebrar o caminho
     $supabase_url = rtrim($supabase_url, '/');
@@ -37,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao_login'])) {
     // ==========================================
     // 🚨 BLOCO DE DIAGNÓSTICO ULTRA SEGURO (MÁGICA DO DEBUG)
     // ==========================================
+    include_once "theme.php"; // garante estilo/tema também durante o diagnóstico
     echo "<div style='background:#fff; color:#000; padding:15px; border:3px solid #ff9800; margin:20px; font-family:monospace; text-align:left; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.2);'>";
     echo "<h3 style='margin-top:0; color:#d32f2f;'>🔍 Diagnóstico de Conexão Supabase</h3>";
     echo "<strong>URL Chamada:</strong> " . htmlspecialchars($url) . "<br>";

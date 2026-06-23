@@ -37,52 +37,19 @@ switch ($instituicao) {
 <head>
     <meta charset="UTF-8">
     <title>Login - <?php echo $nome_faculdade; ?></title>
+    <?php include_once "theme.php"; ?>
     <style>
-        /* 3. Injeta as variáveis do PHP direto no CSS! */
-        body {
-            background-color: <?php echo $cor_fundo; ?>;
-            color: #ffffff;
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-        .card-login {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 40px;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            width: 300px;
-            text-align: center;
-        }
-        .input-grupo input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 6px;
-            border: none;
-            box-sizing: border-box;
-        }
-        .btn-entrar {
-            background-color: <?php echo $cor_botao; ?>;
-            color: <?php echo $cor_texto_btn; ?>;
-            border: none;
-            padding: 12px;
-            width: 100%;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 15px;
-        }
+        body { background: var(--bg); color: var(--text); font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card-login { background: var(--surface); padding: 36px; border-radius: 12px; box-shadow: 0 20px 50px rgba(15,23,42,0.08); border: 1px solid var(--border); width: 360px; text-align: center; }
+        .input-grupo input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #dbe6f8; box-sizing: border-box; background: var(--surface-alt); color: var(--text); }
+        .btn-entrar { background-color: var(--accent); color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; font-weight: 700; cursor: pointer; margin-top: 12px; }
+        .brand { font-weight: 700; margin-bottom: 6px; }
     </style>
 </head>
 <body>
 
     <div class="card-login">
-        <h2>Área do Aluno</h2>
+        <h2 class="brand">Área do Aluno</h2>
         <h3><?php echo $nome_faculdade; ?></h3>
         
         <form action="" method="POST">

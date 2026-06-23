@@ -1,7 +1,8 @@
 <?php
-// Credenciais do seu projeto Supabase
-$supabase_url = "https://vxkxptbrfbqygpisggjm.supabase.co";
-$supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4a3hwdGJyZmJxeWdwaXNnZ2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzkxMjUsImV4cCI6MjA5NjYxNTEyNX0.dEW3a_-Tgr-ufM3LLtzx1cuX1G4rMC_uK8lsJruGYt0";
+if (!file_exists(__DIR__ . "/config.php")) {
+    die("Erro Crítico: O arquivo config.php não foi encontrado em api/.");
+}
+require_once __DIR__ . "/config.php";
 
 /**
  * Função global para buscar dados no Supabase via cURL (API REST)

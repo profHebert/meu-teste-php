@@ -178,6 +178,7 @@ curl_close($ch);
 <head>
     <meta charset="UTF-8">
     <title>Gestão de Questões</title>
+    <?php include_once "theme.php"; ?>
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 30px; display: flex; flex-direction: column; align-items: center; }

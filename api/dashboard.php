@@ -53,6 +53,7 @@ $media_geral = $total_provas > 0 ? ($soma_notas / $total_provas) : 0;
 <head>
     <meta charset="UTF-8">
     <title>Painel do Professor - Central de Notas</title>
+    <?php include_once "theme.php"; ?>
     <style>
         body { background-color: #121214; color: #e1e1e6; font-family: sans-serif; margin: 0; padding: 40px; }
         .container { max-width: 1000px; margin: 0 auto; }
@@ -94,89 +95,96 @@ $media_geral = $total_provas > 0 ? ($soma_notas / $total_provas) : 0;
 </head>
 <body>
 
-    <div class="container">
-        <h1>📊 Painel do Professor</h1>
+<div class="layout-admin" style="display:flex; gap:24px; align-items:flex-start;">
+    <aside style="width:260px; flex:0 0 260px;">
+        <?php include_once "professor_menu.php"; ?>
+    </aside>
 
-        <div class="dashboard-cards">
-            <div class="card">
-                <h3>Total de Entregas</h3>
-                <p><?php echo $total_provas; ?> alunos</p>
-            </div>
-            <div class="card">
-                <h3>Média Geral da Turma</h3>
-                <p class="media"><?php echo number_format($media_geral, 2, ',', '.'); ?></p>
-            </div>
-        </div>
+    <main style="flex:1;">
+        <div class="container">
+            <h1>📊 Painel do Professor</h1>
 
-        <div class="filtro-bloco">
-            <form action="" method="GET" style="display: flex; align-items: center; gap: 15px; margin: 0; width: 100%;">
-                <label for="prova">Filtrar por Avaliação:</label>
-                <select name="prova" id="prova">
-                    <option value="">-- Mostrar Todas as Turmas --</option>
-                    <?php 
-                    // Garante que a turma testada anteriormente apareça mesmo se o banco estiver vazio
-                    if (!in_array('DBDSQL_6a_M_atv1', $provas_por_turma)) {
-                        $provas_por_turma[] = 'DBDSQL_6a_M_atv1';
-                    }
-                    foreach ($provas_por_turma as $p): 
-                    ?>
-                        <option value="<?php echo $p; ?>" <?php echo $filtro_prova === $p ? 'selected' : ''; ?>>
-                            <?php echo htmlspecialchars($p); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <button type="submit" class="btn-filtrar">Aplicar Filtro</button>
-                <?php if (!empty($filtro_prova)): ?>
-                    <a href="dashboard.php" class="btn-limpar">Limpar Filtros</a>
-                <?php endif; ?>
-            </form>
-        </div>
-
-        <div class="tabela-wrapper">
-            <?php if (!empty($resultados)): ?>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Data/Hora</th>
-                            <th>Estudante</th>
-                            <th>RA</th>
-                            <th>Código da Prova</th>
-                            <th>Status</th>
-                            <th>Nota Final</th>
-                            <th>AÇÃO</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($resultados as $linha): 
-                            $data_formatada = isset($linha['created_at']) ? date('d/m/Y H:i', strtotime($linha['created_at'] . ' -3 hours')) : '-';
-                            $nota = floatval($linha['nota_final'] ?? 0);
-                            $classe_nota = $nota >= 6.0 ? 'nota-alta' : 'nota-baixa';
-                        ?>
-                            <tr>
-                                <td><?php echo $data_formatada; ?></td>
-                                <td><strong><?php echo htmlspecialchars($linha['aluno_nome'] ?? 'Anônimo'); ?></strong></td>
-                                <td><?php echo htmlspecialchars($linha['aluno_ra'] ?? '-'); ?></td>
-                                <td><span class="badge-prova"><?php echo htmlspecialchars($linha['codigo_prova'] ?? $linha['turma'] ?? '-'); ?></span></td>
-                                <td><span class="badge-status">Concluída</span></td>
-                                <td class="nota-destaque <?php echo $classe_nota; ?>">
-                                    <?php echo number_format($nota, 2, ',', '.'); ?>
-                                </td>
-                                <td>
-           <a href="/ver_prova?id=<?php echo $linha['id']; ?>" style="color: #04d361; text-decoration: none; font-weight: bold;">
-        <?php echo htmlspecialchars($linha['aluno_nome']); ?> 🔍
-        </a>
-        </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php else: ?>
-                <div class="sem-dados">
-                    Nenhum aluno realizou esta avaliação ainda ou os filtros não retornaram dados.
+            <div class="dashboard-cards">
+                <div class="card">
+                    <h3>Total de Entregas</h3>
+                    <p><?php echo $total_provas; ?> alunos</p>
                 </div>
-            <?php endif; ?>
+                <div class="card">
+                    <h3>Média Geral da Turma</h3>
+                    <p class="media"><?php echo number_format($media_geral, 2, ',', '.'); ?></p>
+                </div>
+            </div>
+
+            <div class="filtro-bloco">
+                <form action="" method="GET" style="display: flex; align-items: center; gap: 15px; margin: 0; width: 100%;">
+                    <label for="prova">Filtrar por Avaliação:</label>
+                    <select name="prova" id="prova">
+                        <option value="">-- Mostrar Todas as Turmas --</option>
+                        <?php 
+                        if (!in_array('DBDSQL_6a_M_atv1', $provas_por_turma)) {
+                            $provas_por_turma[] = 'DBDSQL_6a_M_atv1';
+                        }
+                        foreach ($provas_por_turma as $p): 
+                        ?>
+                            <option value="<?php echo $p; ?>" <?php echo $filtro_prova === $p ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($p); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                    <button type="submit" class="btn-filtrar">Aplicar Filtro</button>
+                    <?php if (!empty($filtro_prova)): ?>
+                        <a href="dashboard.php" class="btn-limpar">Limpar Filtros</a>
+                    <?php endif; ?>
+                </form>
+            </div>
+
+            <div class="tabela-wrapper">
+                <?php if (!empty($resultados)): ?>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Estudante</th>
+                                <th>RA</th>
+                                <th>Código da Prova</th>
+                                <th>Status</th>
+                                <th>Nota Final</th>
+                                <th>AÇÃO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($resultados as $linha): 
+                                $data_formatada = isset($linha['created_at']) ? date('d/m/Y H:i', strtotime($linha['created_at'] . ' -3 hours')) : '-';
+                                $nota = floatval($linha['nota_final'] ?? 0);
+                                $classe_nota = $nota >= 6.0 ? 'nota-alta' : 'nota-baixa';
+                            ?>
+                                <tr>
+                                    <td><?php echo $data_formatada; ?></td>
+                                    <td><strong><?php echo htmlspecialchars($linha['aluno_nome'] ?? 'Anônimo'); ?></strong></td>
+                                    <td><?php echo htmlspecialchars($linha['aluno_ra'] ?? '-'); ?></td>
+                                    <td><span class="badge-prova"><?php echo htmlspecialchars($linha['codigo_prova'] ?? $linha['turma'] ?? '-'); ?></span></td>
+                                    <td><span class="badge-status">Concluída</span></td>
+                                    <td class="nota-destaque <?php echo $classe_nota; ?>">
+                                        <?php echo number_format($nota, 2, ',', '.'); ?>
+                                    </td>
+                                    <td>
+                                        <a href="/ver_prova?id=<?php echo $linha['id']; ?>" style="color: #04d361; text-decoration: none; font-weight: bold;">
+                                            <?php echo htmlspecialchars($linha['aluno_nome']); ?> 🔍
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <div class="sem-dados">
+                        Nenhum aluno realizou esta avaliação ainda ou os filtros não retornaram dados.
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
-    </div>
+    </main>
+</div>
 
 </body>
 </html>

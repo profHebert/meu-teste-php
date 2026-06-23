@@ -4,6 +4,15 @@ if (!isset($_SESSION['professor_logado']) || $_SESSION['professor_logado'] !== t
     header("Location: ../index.php");
     exit;
 }
+
+if (file_exists(__DIR__ . "/config.php")) {
+    require_once __DIR__ . "/config.php";
+} elseif (file_exists(__DIR__ . "/../config.php")) {
+    require_once __DIR__ . "/../config.php";
+} else {
+    die("Erro Crítico: O arquivo config.php não foi encontrado!");
+}
+
 // api/ver_prova.php - VISUALIZADOR DE PROVA CORRIGIDA
 require_once "conexao.php";
 
@@ -81,6 +90,7 @@ foreach ($todas_questoes as $q) {
 <head>
     <meta charset="UTF-8">
     <title>Correção Detalhada - <?php echo htmlspecialchars($prova['aluno_nome']); ?></title>
+    <?php include_once "theme.php"; ?>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #121214; color: #e1e1e6; padding: 40px; margin: 0; }
         .container { max-width: 800px; margin: 0 auto; background: #202024; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
@@ -103,99 +113,98 @@ foreach ($todas_questoes as $q) {
 </head>
 <body>
 
-<div class="container">
-    <a href="javascript:history.back()" class="btn-voltar">← Voltar ao Painel</a>
-    
-    <div class="header">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1>Prova Corrigida de <?php echo htmlspecialchars($prova['aluno_nome']); ?></h1>
-                <div class="meta-grid">
-                    <div><strong>RA:</strong> <?php echo htmlspecialchars($prova['aluno_ra']); ?></div>
-                    <div><strong>Avaliação:</strong> <?php echo htmlspecialchars($prova['codigo_prova']); ?></div>
-                    <div><strong>Data/Hora:</strong> <?php echo date('d/m/Y H:i', strtotime($prova['created_at'])); ?></div>
+<div class="layout-admin" style="display:flex; gap:24px; align-items:flex-start;">
+    <aside style="width:260px; flex:0 0 260px;">
+        <?php include_once "professor_menu.php"; ?>
+    </aside>
+
+    <main style="flex:1;">
+        <div class="container">
+            <a href="javascript:history.back()" class="btn-voltar">← Voltar ao Painel</a>
+            
+            <div class="header">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1>Prova Corrigida de <?php echo htmlspecialchars($prova['aluno_nome']); ?></h1>
+                        <div class="meta-grid">
+                            <div><strong>RA:</strong> <?php echo htmlspecialchars($prova['aluno_ra']); ?></div>
+                            <div><strong>Avaliação:</strong> <?php echo htmlspecialchars($prova['codigo_prova']); ?></div>
+                            <div><strong>Data/Hora:</strong> <?php echo date('d/m/Y H:i', strtotime($prova['created_at'])); ?></div>
+                        </div>
+                    </div>
+                    <div class="badge-nota">
+                        Nota: <?php echo number_format($prova['nota_final'], 2, ',', '.'); ?>
+                    </div>
                 </div>
             </div>
-            <div class="badge-nota">
-                Nota: <?php echo number_format($prova['nota_final'], 2, ',', '.'); ?>
-            </div>
-        </div>
-    </div>
 
-<h2>Questões Respondidas</h2>
+        <h2>Questões Respondidas</h2>
 
-<?php 
-$num = 1;
+        <?php 
+        $num = 1;
 
-// 1. Limpeza e decodificação padrão do JSON vindo do banco
-$json_bruto = $prova['respostas_aluno'] ?? '';
-if (is_array($json_bruto)) {
-    $json_bruto = json_encode($json_bruto);
-}
-$json_limpo = stripslashes(trim($json_bruto, '"'));
-$dados_resposta = json_decode($json_limpo, true) ?: [];
+        // 1. Limpeza e decodificação padrão do JSON vindo do banco
+        $json_bruto = $prova['respostas_aluno'] ?? '';
+        if (is_array($json_bruto)) {
+            $json_bruto = json_encode($json_bruto);
+        }
+        $json_limpo = stripslashes(trim($json_bruto, '"'));
+        $dados_resposta = json_decode($json_limpo, true) ?: [];
 
-// 2. Extrai os dois arrays que acabamos de gravar com sucesso
-$sorteadas = $dados_resposta['questoes_sorteadas'] ?? [];
-$alternativas_aluno = $dados_resposta['alternativas_aluno'] ?? [];
+        // 2. Extrai os dois arrays que acabamos de gravar com sucesso
+        $sorteadas = $dados_resposta['questoes_sorteadas'] ?? [];
+        $alternativas_aluno = $dados_resposta['alternativas_aluno'] ?? [];
 
-// 3. O Loop Inteligente pelas questões
-foreach ($todas_questoes as $q): 
-    $uuid_questao = trim($q['id']);
+        // 3. O Loop Inteligente pelas questões
+        foreach ($todas_questoes as $q): 
+            $uuid_questao = trim($q['id']);
 
-    // Filtro: Se não foi sorteada para este aluno, pula!
-    if (!in_array($uuid_questao, $sorteadas)) {
-        continue;
-    }
-    
-    // 🔥 CAPTURA REAL: Busca qual alternativa o aluno marcou para ESTA questão específica
-    // Se ele não tiver marcado nada, assume -1 para não coincidir com a alternativa 0
-    $resposta_marcada = isset($alternativas_aluno[$uuid_questao]) ? intval($alternativas_aluno[$uuid_questao]) : -1;
-    
-    $gabarito = intval($q['resposta_correta']);
-    $acertou = ($resposta_marcada === $gabarito);
-    
-    $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
-?>
-    <div class="questao-box <?php echo $acertou ? 'correta' : 'errada'; ?>">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <strong>Questão <?php echo $num++; ?></strong>
-            <span class="status-badge <?php echo $acertou ? 'c' : 'e'; ?>">
-                <?php echo $acertou ? '🟢 Acertou' : '🔴 Errou'; ?>
-            </span>
-        </div>
-        <p style="margin: 0 0 15px 0; font-size: 16px;"><?php echo htmlspecialchars($q['enunciado']); ?></p>
+            // Filtro: Se não foi sorteada para este aluno, pula!
+            if (!in_array($uuid_questao, $sorteadas)) {
+                continue;
+            }
+            
+            $resposta_marcada = isset($alternativas_aluno[$uuid_questao]) ? intval($alternativas_aluno[$uuid_questao]) : -1;
+            $gabarito = intval($q['resposta_correta']);
+            $acertou = ($resposta_marcada === $gabarito);
+            $opcoes = is_string($q['opcoes']) ? json_decode($q['opcoes'], true) : $q['opcoes'];
+        ?>
+            <div class="questao-box <?php echo $acertou ? 'correta' : 'errada'; ?>">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <strong>Questão <?php echo $num++; ?></strong>
+                    <span class="status-badge <?php echo $acertou ? 'c' : 'e'; ?>">
+                        <?php echo $acertou ? '🟢 Acertou' : '🔴 Errou'; ?>
+                    </span>
+                </div>
+                <p style="margin: 0 0 15px 0; font-size: 16px;"><?php echo htmlspecialchars($q['enunciado']); ?></p>
 
-        <?php if (is_array($opcoes)): ?>
-            <?php foreach ($opcoes as $idx => $texto_opcao): 
-                $classe_opcao = '';
-                
-                // Se for a alternativa que o aluno marcou
-                if ($idx === $resposta_marcada) {
-                    $classe_opcao = $acertou ? 'opcao-correta-aluno' : 'opcao-errada-aluno';
-                }
-                // Se for o gabarito oficial (para mostrar onde era o certo mesmo se ele errou)
-                if ($idx === $gabarito) {
-                    $classe_opcao .= ' gabarito-oficial';
-                }
-            ?>
-                <div class="opcao <?php echo $classe_opcao; ?>" style="padding: 8px; margin: 4px 0; border-radius: 4px;">
-                    <?php 
-                    echo htmlspecialchars($texto_opcao); 
-                    
-                    // Tags de texto para ajudar na leitura
-                    if ($idx === $resposta_marcada) {
-                        echo " ──> 👤 Sua Resposta";
-                    }
-                    if ($idx === $gabarito) {
-                        echo " ✔ (Gabarito Oficial)";
-                    }
+                <?php if (is_array($opcoes)): ?>
+                    <?php foreach ($opcoes as $idx => $texto_opcao): 
+                        $classe_opcao = '';
+                        if ($idx === $resposta_marcada) {
+                            $classe_opcao = $acertou ? 'opcao-correta-aluno' : 'opcao-errada-aluno';
+                        }
+                        if ($idx === $gabarito) {
+                            $classe_opcao .= ' gabarito-oficial';
+                        }
                     ?>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
-    </div>
-<?php endforeach; ?>
+                        <div class="opcao <?php echo $classe_opcao; ?>" style="padding: 8px; margin: 4px 0; border-radius: 4px;">
+                            <?php 
+                            echo htmlspecialchars($texto_opcao); 
+                            if ($idx === $resposta_marcada) {
+                                echo " ──> 👤 Sua Resposta";
+                            }
+                            if ($idx === $gabarito) {
+                                echo " ✔ (Gabarito Oficial)";
+                            }
+                            ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        <?php endforeach; ?>
+        </div>
+    </main>
 </div>
 
 </body>

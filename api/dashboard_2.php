@@ -1,8 +1,17 @@
 <?php
 // salvahistorico.php - TESTE ISOLADO DE INSERÇÃO DIRETA
+if (file_exists(__DIR__ . "/config.php")) {
+    require_once __DIR__ . "/config.php";
+} elseif (file_exists(__DIR__ . "/../config.php")) {
+    require_once __DIR__ . "/../config.php";
+} else {
+    die("Erro Crítico: O arquivo config.php não foi encontrado!");
+}
+
 require_once "conexao.php";
 
 echo "<h2>🧪 Iniciando Teste de Inserção Isolado...</h2>";
+include_once "theme.php";
 
 // 1. Dados fictícios para o teste estático
 $dados_teste = [

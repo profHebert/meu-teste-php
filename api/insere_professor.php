@@ -4,11 +4,13 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// 1. Configurações do seu Supabase (Mantenha sua chave real completa)
-$supabase_url = "https://vxkxptbrfbqygpisggjm.supabase.co";
-$supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4a3hwdGJyZmJxeWdwaXNnZ2ptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzkxMjUsImV4cCI6MjA5NjYxNTEyNX0.dEW3a_-Tgr-ufM3LLtzx1cuX1G4rMC_uK8lsJruGYt0";
-define('SUPABASE_URL', $supabase_url);
-define('SUPABASE_KEY', $supabase_key);
+if (file_exists(__DIR__ . "/config.php")) {
+    require_once __DIR__ . "/config.php";
+} elseif (file_exists(__DIR__ . "/../config.php")) {
+    require_once __DIR__ . "/../config.php";
+} else {
+    die("Erro Crítico: O arquivo config.php não foi encontrado!");
+}
 // 2. Dados do novo professor que você pediu
 $novo_usuario = 'prof';
 $senha_pura   = 'prof123';
@@ -51,4 +53,9 @@ echo "<p><strong>Usuário criado:</strong> " . htmlspecialchars($novo_usuario) .
 echo "<p><strong>Hash gerado pelo PHP:</strong> <code style='background:#eee; padding:3px;'>" . htmlspecialchars($senha_criptografada) . "</code></p>";
 echo "<p><strong>Código HTTP do Supabase:</strong> " . $http_code . "</p>";
 echo "<p><strong>Resposta do Banco:</strong></p>";
+echo "<pre style='background:#f4f4f4; padding:10px;'>";
+echo htmlspecialchars($resposta);
+echo "</pre>";
+echo "</div>";
+?>
 echo "<pre style='background:#f4f4f4; padding:10px;

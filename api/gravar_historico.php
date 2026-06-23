@@ -1,4 +1,12 @@
 <?php
+if (file_exists(__DIR__ . "/config.php")) {
+    require_once __DIR__ . "/config.php";
+} elseif (file_exists(__DIR__ . "/../config.php")) {
+    require_once __DIR__ . "/../config.php";
+} else {
+    die("Erro Crítico: O arquivo config.php não foi encontrado!");
+}
+
 require_once "conexao.php";
 
 // Função isolada para disparar o cURL direto para a tabela do histórico
